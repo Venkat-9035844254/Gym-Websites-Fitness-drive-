@@ -1,0 +1,628 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String       @id @default(uuid())
+  email            String       @unique
+  passwordHash     String
+  name             String
+  phone            String?
+  role             String       @default("MEMBER")
+  avatar           String?
+  branchId         String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  branch           GymBranch?   @relation(fields: [branchId], references: [id])
+  memberProfile    MemberProfile?
+  trainerProfile   TrainerProfile?
+  staffProfile     StaffProfile?
+  
+  sentMessages     Message[]    @relation("SentMessages")
+  notifications    Notification[]
+  notificationLogs NotificationLog[]
+  auditLogs        AuditLog[]
+  payments         Payment[]
+  orders           Order[]
+  refunds          Refund[]
+  invoices         Invoice[]
+  verificationRequests VerificationRequest[]
+}
+
+model GymBranch {
+  id          String   @id @default(uuid())
+  name        String
+  code        String   @unique
+  address     String
+  city        String
+  phone       String
+  email       String
+  openingHours String
+  capacity    Int      @default(500)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  classes     Class[]
+  attendance  Attendance[]
+}
+
+model MemberProfile {
+  id                 String           @id @default(uuid())
+  userId             String           @unique
+  dateOfBirth        DateTime?
+  age                Int?
+  gender             String?
+  heightCm           Float?
+  weightKg           Float?
+  workoutDays        Int              @default(4)
+  foodPreference     String           @default("Non-Vegetarian")
+  dietGoal           String           @default("Muscle Gain")
+  dietBudget         Float            @default(7000)
+  dietBudgetPeriod   String           @default("MONTHLY")
+  workoutPlanJson    String?
+  dietPlanJson       String?
+  emergencyContact   String?
+  emergencyPhone     String?
+  qrCode             String           @unique @default(uuid())
+  membershipStatus   String           @default("PENDING")
+  currentPlanId      String?
+  assignedTrainerId  String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentPlan        MembershipPlan?  @relation(fields: [currentPlanId], references: [id])
+  assignedTrainer    TrainerProfile?  @relation("TrainerMembers", fields: [assignedTrainerId], references: [id])
+  
+  memberships        Membership[]
+  classBookings      ClassBooking[]
+  ptBookings         PersonalTrainingBooking[]
+  attendances        Attendance[]
+  workoutProgresses  WorkoutProgress[]
+  measurements       ProgressMeasurement[]
+  progressPhotos     ProgressPhoto[]
+  goals              Goal[]
+  reviews            Review[]
+  notificationLogs   NotificationLog[]
+  verificationRequests VerificationRequest[]
+  membershipPasses   MembershipPass[]
+}
+
+model TrainerProfile {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  bio            String?
+  specialization String
+  experienceYears Int      @default(1)
+  rating         Float     @default(5.0)
+  certifications String?
+  languages      String?
+  isAvailable    Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedMembers MemberProfile[] @relation("TrainerMembers")
+  classes        Class[]
+  ptBookings     PersonalTrainingBooking[]
+  workoutPlans   WorkoutPlan[]
+  nutritionPlans NutritionPlan[]
+  availabilities TrainerAvailability[]
+}
+
+model StaffProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  department  String
+  designation String
+  shiftHours  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MembershipPlan {
+  id           String   @id @default(uuid())
+  name         String
+  description  String
+  priceMonthly Float
+  priceYearly  Float
+  features     String // JSON string array
+  isPopular    Boolean  @default(false)
+  badgeText    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships  Membership[]
+  memberProfiles MemberProfile[]
+  orders       Order[]
+  verificationRequests VerificationRequest[]
+}
+
+model Membership {
+  id               String           @id @default(uuid())
+  memberId         String
+  planId           String
+  startDate        DateTime
+  endDate          DateTime
+  amountPaid       Float
+  status           String           @default("ACTIVE")
+  billingCycle     String           @default("MONTHLY") // MONTHLY, YEARLY
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  member           MemberProfile    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  plan             MembershipPlan   @relation(fields: [planId], references: [id])
+  payments         Payment[]
+  notificationLogs NotificationLog[]
+  verificationRequest VerificationRequest?
+  pass             MembershipPass?
+
+  @@index([memberId])
+  @@index([status])
+  @@index([endDate])
+}
+
+model Order {
+  id              String   @id @default(uuid())
+  userId          String
+  razorpayOrderId String   @unique
+  amount          Float
+  currency        String   @default("INR")
+  status          String   @default("PENDING") // PENDING, PAID, FAILED, CANCELLED, REFUNDED
+  planId          String?
+  billingCycle    String?  @default("MONTHLY") // MONTHLY, SIX_MONTHS, YEARLY
+  receipt         String   @unique
+  notes           String?  // JSON string
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User            @relation(fields: [userId], references: [id])
+  plan            MembershipPlan? @relation(fields: [planId], references: [id])
+  payment         Payment?
+  refunds         Refund[]
+
+  @@index([userId])
+  @@index([razorpayOrderId])
+  @@index([status])
+}
+
+model Payment {
+  id                String   @id @default(uuid())
+  orderId           String?  @unique
+  userId            String
+  membershipId      String?
+  razorpayPaymentId String   @unique
+  razorpayOrderId   String
+  amount            Float
+  currency          String   @default("INR")
+  status            String   @default("CAPTURED") // CAPTURED, FAILED, REFUNDED
+  paymentMethod     String   @default("RAZORPAY")
+  email             String?
+  contact           String?
+  captured          Boolean  @default(true)
+  refundId          String?
+  refundStatus      String?
+  refundAmount      Float?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  order             Order?      @relation(fields: [orderId], references: [id])
+  user              User        @relation(fields: [userId], references: [id])
+  membership        Membership? @relation(fields: [membershipId], references: [id])
+  invoice           Invoice?
+  refunds           Refund[]
+  verificationRequest VerificationRequest?
+
+  @@index([userId])
+  @@index([razorpayPaymentId])
+  @@index([razorpayOrderId])
+  @@index([status])
+}
+
+model Refund {
+  id              String   @id @default(uuid())
+  refundId        String   @unique // Razorpay refund ID (rfnd_...)
+  paymentId       String
+  orderId         String?
+  userId          String
+  amount          Float
+  currency        String   @default("INR")
+  status          String   @default("PROCESSED") // PROCESSED, PENDING, FAILED
+  reason          String?
+  createdAt       DateTime @default(now())
+
+  payment         Payment  @relation(fields: [paymentId], references: [id])
+  order           Order?   @relation(fields: [orderId], references: [id])
+  user            User     @relation(fields: [userId], references: [id])
+
+  @@index([paymentId])
+  @@index([userId])
+  @@index([refundId])
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  invoiceNumber String   @unique
+  userId        String
+  paymentId     String?  @unique
+  amount        Float
+  taxAmount     Float    @default(0)
+  totalAmount   Float
+  status        String   @default("PAID")
+  issuedDate    DateTime @default(now())
+  dueDate       DateTime?
+
+  user          User     @relation(fields: [userId], references: [id])
+  payment       Payment? @relation(fields: [paymentId], references: [id])
+}
+
+model Class {
+  id           String   @id @default(uuid())
+  name         String
+  description  String
+  category     String   // HIIT, Yoga, CrossFit, Strength, Boxing
+  trainerId    String
+  branchId     String
+  scheduleTime DateTime
+  durationMins Int      @default(60)
+  capacity     Int      @default(20)
+  location     String   @default("Studio A")
+  intensity    String   @default("Intermediate")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  trainer      TrainerProfile @relation(fields: [trainerId], references: [id])
+  branch       GymBranch      @relation(fields: [branchId], references: [id])
+  bookings     ClassBooking[]
+}
+
+model ClassBooking {
+  id        String        @id @default(uuid())
+  classId   String
+  memberId  String
+  status    String        @default("CONFIRMED")
+  bookedAt  DateTime      @default(now())
+
+  class     Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  member    MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model TrainerAvailability {
+  id        String   @id @default(uuid())
+  trainerId String
+  dayOfWeek Int      // 0-6 (Sun-Sat)
+  startTime String   // e.g. "08:00"
+  endTime   String   // e.g. "17:00"
+
+  trainer   TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+}
+
+model PersonalTrainingBooking {
+  id          String        @id @default(uuid())
+  memberId    String
+  trainerId   String
+  sessionTime DateTime
+  durationMins Int          @default(60)
+  status      String        @default("CONFIRMED")
+  notes       String?
+  createdAt   DateTime      @default(now())
+
+  member      MemberProfile  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  trainer     TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+}
+
+model Attendance {
+  id           String           @id @default(uuid())
+  memberId     String
+  branchId     String
+  checkInTime  DateTime         @default(now())
+  checkOutTime DateTime?
+  method       String           @default("QR_CODE")
+
+  member       MemberProfile    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  branch       GymBranch        @relation(fields: [branchId], references: [id])
+}
+
+model Exercise {
+  id           String   @id @default(uuid())
+  name         String
+  muscleGroup  String   // Chest, Back, Shoulders, Arms, Legs, Core, Cardio
+  equipment    String   // Dumbbell, Barbell, Machine, Bodyweight
+  difficulty   String   // Beginner, Intermediate, Advanced
+  instructions String
+  videoUrl     String?
+  imageUrl     String?
+
+  workoutExercises WorkoutExercise[]
+}
+
+model WorkoutPlan {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  trainerId   String
+  targetGoal  String   // Weight Loss, Muscle Gain, Endurance
+  createdAt   DateTime @default(now())
+
+  trainer     TrainerProfile @relation(fields: [trainerId], references: [id])
+  exercises   WorkoutExercise[]
+  progresses  WorkoutProgress[]
+}
+
+model WorkoutExercise {
+  id            String   @id @default(uuid())
+  workoutPlanId String
+  exerciseId    String
+  sets          Int      @default(3)
+  reps          Int      @default(12)
+  restSeconds   Int      @default(60)
+  weightKg      Float?
+
+  workoutPlan   WorkoutPlan @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
+  exercise      Exercise    @relation(fields: [exerciseId], references: [id])
+}
+
+model WorkoutProgress {
+  id            String   @id @default(uuid())
+  memberId      String
+  workoutPlanId String
+  completedAt   DateTime @default(now())
+  feedbackNotes String?
+
+  member        MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  workoutPlan   WorkoutPlan    @relation(fields: [workoutPlanId], references: [id])
+}
+
+model NutritionPlan {
+  id          String   @id @default(uuid())
+  title       String
+  trainerId   String
+  calories    Int
+  proteinGrams Int
+  carbsGrams  Int
+  fatsGrams   Int
+  description String?
+  createdAt   DateTime @default(now())
+
+  trainer     TrainerProfile @relation(fields: [trainerId], references: [id])
+  meals       Meal[]
+}
+
+model Meal {
+  id              String        @id @default(uuid())
+  nutritionPlanId String
+  mealType        String        // Breakfast, Lunch, Snack, Dinner
+  name            String
+  description     String
+  calories        Int
+  protein         Float
+  carbs           Float
+  fats            Float
+
+  nutritionPlan   NutritionPlan @relation(fields: [nutritionPlanId], references: [id], onDelete: Cascade)
+}
+
+model ProgressMeasurement {
+  id          String   @id @default(uuid())
+  memberId    String
+  date        DateTime @default(now())
+  weightKg    Float
+  bodyFatPct  Float?
+  bmi         Float?
+  chestCm     Float?
+  waistCm     Float?
+  armsCm      Float?
+  thighsCm    Float?
+
+  member      MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model ProgressPhoto {
+  id          String   @id @default(uuid())
+  memberId    String
+  date        DateTime @default(now())
+  photoType   String   // FRONT, SIDE, BACK
+  imageUrl    String
+  isPrivate   Boolean  @default(true)
+
+  member      MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model Goal {
+  id          String   @id @default(uuid())
+  memberId    String
+  title       String
+  category    String   // WEIGHT, STRENGTH, ATTENDANCE, FAT_LOSS
+  targetValue Float
+  currentValue Float
+  unit        String   // kg, days, %
+  deadline    DateTime?
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  member      MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  senderId    String
+  receiverId  String
+  content     String
+  isRead      Boolean  @default(false)
+  sentAt      DateTime @default(now())
+
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  message     String
+  type        String   // SYSTEM, CLASS, PAYMENT, MESSAGING
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotificationLog {
+  id            String              @id @default(uuid())
+  userId        String
+  memberId      String
+  membershipId  String
+  type          String              @default("MEMBERSHIP_EXPIRY_5_DAY")
+  title         String
+  message       String
+  expiryDate    String
+  scheduledDate String
+  sentDate      String?
+  channel       String              @default("IN_APP")
+  status        String              @default("PENDING")
+  readStatus    Boolean             @default(false)
+  errorLog      String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  member        MemberProfile       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  membership    Membership          @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([membershipId, type, channel])
+  @@index([memberId])
+  @@index([expiryDate])
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+model Lead {
+  id            String     @id @default(uuid())
+  name          String
+  email         String
+  phone         String
+  interestedPlan String?
+  source        String     @default("WEBSITE")
+  status        String     @default("NEW")
+  notes         String?
+  createdAt     DateTime   @default(now())
+}
+
+model Enquiry {
+  id        String        @id @default(uuid())
+  name      String
+  email     String
+  phone     String
+  subject   String
+  message   String
+  status    String        @default("NEW")
+  notes     String?
+  createdAt DateTime      @default(now())
+}
+
+model BlogPost {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  summary     String
+  content     String
+  coverImage  String
+  category    String   // FITNESS, NUTRITION, RECOVERY, NEWS
+  authorName  String
+  publishedAt DateTime @default(now())
+}
+
+model Testimonial {
+  id          String   @id @default(uuid())
+  memberName  String
+  memberRole  String   @default("Member since 2023")
+  avatar      String
+  rating      Int      @default(5)
+  comment     String
+  beforeWeight String?
+  afterWeight String?
+  isApproved  Boolean  @default(true)
+}
+
+model Review {
+  id          String   @id @default(uuid())
+  memberId    String
+  targetType  String   // TRAINER, CLASS, GYM
+  targetId    String
+  rating      Int      @default(5)
+  comment     String
+  createdAt   DateTime @default(now())
+
+  member      MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  details   String
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model VerificationRequest {
+  id              String         @id @default(uuid())
+  memberId        String
+  userId          String
+  planId          String
+  paymentId       String?        @unique
+  membershipId    String?        @unique
+  amount          Float
+  billingCycle    String         @default("MONTHLY") // MONTHLY, SIX_MONTHS, YEARLY
+  paymentMethod   String         @default("MANUAL")  // UPI, BANK_TRANSFER, CASH, CARD, MANUAL
+  transactionRef  String         // UTR / Transaction Reference
+  receiptUrl      String?
+  status          String         @default("PENDING_VERIFICATION") // PENDING_VERIFICATION, APPROVED, REJECTED, EXPIRED
+  rejectionReason String?
+  requestDate     DateTime       @default(now())
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  member          MemberProfile  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan            MembershipPlan @relation(fields: [planId], references: [id])
+  payment         Payment?       @relation(fields: [paymentId], references: [id])
+  membership      Membership?    @relation(fields: [membershipId], references: [id])
+  pass            MembershipPass?
+
+  @@index([memberId])
+  @@index([userId])
+  @@index([status])
+}
+
+model MembershipPass {
+  id                    String              @id @default(uuid())
+  passNumber            String              @unique
+  memberId              String
+  membershipId          String              @unique
+  verificationRequestId String              @unique
+  issueDate             DateTime            @default(now())
+  qrCodeData            String
+  status                String              @default("ACTIVE") // ACTIVE, EXPIRED, REVOKED
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  member                MemberProfile       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  membership            Membership          @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  verificationRequest   VerificationRequest @relation(fields: [verificationRequestId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([passNumber])
+}
