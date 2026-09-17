@@ -22,11 +22,14 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Set up JDK 17
+      - name: Set up Java JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Install Dependencies
         run: npm install
@@ -40,13 +43,14 @@ jobs:
       - name: Sync Capacitor Android
         run: npx cap sync android
 
-      - name: Grant Execute Permission for Gradlew
-        run: chmod +x android/gradlew
-
-      - name: Build Debug APK with Gradle
+      - name: Accept Licenses and Build Debug APK
         run: |
+          mkdir -p $ANDROID_HOME/licenses
+          printf "89330422841152d169665737302d96d6c6641cc7\n24333f8a63718c3093438126d226db08706d3165\n504667f4c05e7c1729b3bb6237c54437a84a63ec\n84831b9409646a918e30573bab4c9c91346d8abd\n" > $ANDROID_HOME/licenses/android-sdk-license
+          printf "84831b9409646a918e30573bab4c9c91346d8abd\n" > $ANDROID_HOME/licenses/android-sdk-preview-license
           cd android
-          ./gradlew assembleDebug --no-daemon
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
