@@ -455,57 +455,144 @@ export default function MemberDashboard() {
       )}
 
       {/* MEMBERSHIP STATUS BANNER / PROMPT */}
-      {!isMembershipActive ? (
-        <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-rose-950/80 via-slate-900 to-slate-900 border-2 border-rose-500/50 shadow-[0_0_25px_rgba(244,63,94,0.25)] flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 text-xs font-black uppercase flex items-center gap-1.5 animate-pulse">
-                <AlertTriangle className="w-4 h-4" />
-                Membership Inactive
-              </span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black text-white font-display">
-              Activate Your Arena Pass to Access All Gym Facilities & Classes
-            </h2>
-            <p className="text-xs text-slate-400 max-w-xl">
-              Choose your monthly or yearly plan below to unlock unrestricted turnstile check-ins, personal training consultations, and premium recovery facilities.
-            </p>
-          </div>
-
-          <button
-            onClick={() => setSelectedPlanForRenewal(currentPlan)}
-            className="px-6 py-3.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-neon transition-all hover:scale-105 shrink-0 flex items-center gap-2"
-          >
-            <ShieldCheck className="w-4 h-4" />
-            Activate Membership Pass
-          </button>
-        </div>
-      ) : (
-        <div className="rounded-3xl p-6 bg-slate-900 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Active Member</span>
-                <span className="text-xs text-slate-400">• {daysRemaining} Days Remaining</span>
+      {(() => {
+        if (latestRequest?.status === "PENDING_VERIFICATION") {
+          return (
+            <div className="rounded-3xl p-6 sm:p-8 bg-slate-900 border-2 border-amber-500/50 shadow-[0_0_25px_rgba(245,158,11,0.2)] flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-black uppercase flex items-center gap-1.5 animate-pulse">
+                    <Clock className="w-4 h-4 text-amber-400" />
+                    🟡 Payment Verification Pending
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-white font-display">
+                  Payment Verification Pending
+                </h2>
+                <p className="text-sm text-amber-200/90 max-w-xl">
+                  Your membership payment request has been submitted and is waiting for Owner verification.
+                </p>
+                {latestRequest.transactionRef && (
+                  <p className="text-xs text-slate-400 font-mono">
+                    Ref: {latestRequest.transactionRef} • Submitted for {latestRequest.plan?.name || "Membership Plan"} ({latestRequest.billingCycle})
+                  </p>
+                )}
               </div>
-              <h3 className="text-base font-bold text-white">{currentPlan.name} Pass</h3>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
+                <button
+                  disabled
+                  className="px-6 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-extrabold text-xs uppercase tracking-wider cursor-not-allowed flex items-center gap-2"
+                >
+                  <Clock className="w-4 h-4 animate-spin" />
+                  Verification Pending
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        if (latestRequest?.status === "APPROVED" || isMembershipActive) {
+          return (
+            <div className="rounded-3xl p-6 bg-slate-900 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> 🟢 Membership Active
+                    </span>
+                    <span className="text-xs text-slate-400">• {daysRemaining} Days Remaining</span>
+                  </div>
+                  <h3 className="text-base font-bold text-white">{currentPlan.name} Pass</h3>
+                  <p className="text-xs text-slate-400">Payment Status: Paid • Expires: {expiryDateStr}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowRegenerateModal(true)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 text-xs font-bold flex items-center gap-2 transition-all"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Regenerate Plans
+                </button>
+                <button
+                  onClick={handleGeneratePass}
+                  disabled={isLoadingPass}
+                  className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase shadow-neon flex items-center gap-2"
+                >
+                  <QrCode className="w-3.5 h-3.5" />
+                  View Membership Pass
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        if (latestRequest?.status === "REJECTED") {
+          return (
+            <div className="rounded-3xl p-6 sm:p-8 bg-slate-900 border-2 border-rose-500/50 shadow-[0_0_25px_rgba(244,63,94,0.25)] flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 text-xs font-black uppercase flex items-center gap-1.5">
+                    <XCircle className="w-4 h-4" />
+                    🔴 Payment Request Rejected
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-white font-display">
+                  Payment Request Rejected
+                </h2>
+                <p className="text-sm text-rose-200 max-w-xl">
+                  Your membership payment request was not approved by the Owner.
+                </p>
+                {latestRequest.rejectionReason && (
+                  <div className="bg-rose-950/50 p-2.5 rounded-xl border border-rose-800/40 text-xs text-rose-300">
+                    <strong>Reason:</strong> {latestRequest.rejectionReason}
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => setShowManualModal(true)}
+                className="px-6 py-3.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-neon transition-all hover:scale-105 shrink-0 flex items-center gap-2"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Submit Payment Request Again
+              </button>
+            </div>
+          );
+        }
+
+        return (
+          <div className="rounded-3xl p-6 sm:p-8 bg-slate-900 border-2 border-slate-800 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-black uppercase flex items-center gap-1.5">
+                  <Info className="w-4 h-4" />
+                  Membership Payment Required
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white font-display">
+                Membership Payment Required
+              </h2>
+              <p className="text-xs text-slate-400 max-w-xl">
+                Please select a membership plan and submit a payment request for Owner verification.
+              </p>
+            </div>
+
             <button
-              onClick={() => setShowRegenerateModal(true)}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 text-xs font-bold flex items-center gap-2 transition-all"
+              onClick={() => setShowManualModal(true)}
+              className="px-6 py-3.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-neon transition-all hover:scale-105 shrink-0 flex items-center gap-2"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Regenerate Plans
+              <ShieldCheck className="w-4 h-4" />
+              Select Membership Plan
             </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* DASHBOARD NAVIGATION TABS */}
       <div className="flex overflow-x-auto gap-2 p-1.5 bg-slate-950 border border-slate-800 rounded-2xl">
@@ -666,31 +753,53 @@ export default function MemberDashboard() {
             </div>
 
             {/* Verification Status Banners */}
+            {!latestRequest && !isMembershipActive && (
+              <div className="p-6 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 text-amber-300 space-y-3 shadow-lg">
+                <div className="flex items-center gap-2 text-sm font-extrabold text-amber-400">
+                  <Info className="w-5 h-5" />
+                  <span>Membership Payment Required</span>
+                </div>
+                <p className="text-xs text-amber-200/90">
+                  You have not submitted any membership payment request yet. Select a membership plan and submit your manual payment details to request Owner verification.
+                </p>
+                <button
+                  onClick={() => setShowManualModal(true)}
+                  className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs uppercase tracking-wider shadow-neon inline-flex items-center gap-2"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  Select Membership Plan
+                </button>
+              </div>
+            )}
+
             {latestRequest?.status === "PENDING_VERIFICATION" && (
               <div className="p-6 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 text-amber-300 space-y-3 shadow-lg">
-                <div className="flex items-center gap-2 text-sm font-extrabold">
-                  <Clock className="w-5 h-5 text-amber-400 animate-spin" />
-                  <span>«Payment received. Waiting for admin verification.»</span>
+                <div className="flex items-center gap-2 text-sm font-extrabold text-amber-400">
+                  <Clock className="w-5 h-5 animate-spin" />
+                  <span>🟡 Payment Verification Pending</span>
                 </div>
-                <p className="text-xs text-amber-200/80">
-                  Your verification request for <strong className="text-white">{latestRequest.plan?.name || "Membership Plan"}</strong> ({latestRequest.billingCycle}) of <strong>₹{latestRequest.amount}</strong> is currently being reviewed by Gym Administration.
+                <p className="text-xs text-amber-200/90">
+                  Your membership payment request has been submitted and is waiting for Owner verification.
                 </p>
                 <div className="text-[11px] text-amber-300/70 font-mono bg-amber-950/40 p-2.5 rounded-xl border border-amber-800/40 inline-block">
-                  Transaction Ref: {latestRequest.transactionRef} • Submitted: {new Date(latestRequest.requestDate).toLocaleDateString()}
+                  Plan: {latestRequest.plan?.name || "Gym Plan"} ({latestRequest.billingCycle}) • Amount: ₹{latestRequest.amount} • Ref: {latestRequest.transactionRef} • Submitted: {new Date(latestRequest.requestDate).toLocaleDateString()}
                 </div>
               </div>
             )}
 
             {(latestRequest?.status === "APPROVED" || isMembershipActive) && (
               <div className="p-6 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/40 text-emerald-300 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg">
-                <div className="space-y-1 text-center md:text-left">
+                <div className="space-y-1.5 text-center md:text-left">
                   <div className="flex items-center gap-2 text-sm font-extrabold text-emerald-400">
                     <CheckCircle2 className="w-5 h-5" />
-                    <span>«Membership verified successfully.»</span>
+                    <span>🟢 Membership Active</span>
                   </div>
-                  <p className="text-xs text-emerald-200/80">
-                    Your payment was cross-verified by admin and your digital membership pass is fully active.
+                  <p className="text-xs text-emerald-200/90">
+                    Your {latestRequest?.plan?.name || currentPlan.name} membership payment has been verified and your membership is now active.
                   </p>
+                  <div className="text-[11px] text-emerald-300/80 font-mono bg-emerald-950/40 p-2 rounded-lg border border-emerald-800/40 inline-block">
+                    Payment Status: Paid • Ref: {latestRequest?.transactionRef || "VERIFIED"} • Expires: {expiryDateStr}
+                  </div>
                 </div>
 
                 <button
@@ -699,7 +808,7 @@ export default function MemberDashboard() {
                   className="px-6 py-3.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-neon transition-all hover:scale-105 shrink-0 flex items-center gap-2 disabled:opacity-50"
                 >
                   <QrCode className="w-4 h-4" />
-                  <span>Generate Membership Pass</span>
+                  <span>View Membership Pass</span>
                 </button>
               </div>
             )}
@@ -708,17 +817,22 @@ export default function MemberDashboard() {
               <div className="p-6 rounded-2xl bg-rose-500/10 border-2 border-rose-500/40 text-rose-300 space-y-3 shadow-lg">
                 <div className="flex items-center gap-2 text-sm font-extrabold text-rose-400">
                   <XCircle className="w-5 h-5" />
-                  <span>«Verification rejected.»</span>
+                  <span>🔴 Payment Request Rejected</span>
                 </div>
-                <div className="bg-rose-950/50 p-3 rounded-xl border border-rose-800/50 text-xs text-rose-200">
-                  <strong>Admin Rejection Reason:</strong> {latestRequest.rejectionReason || "Payment details could not be matched."}
-                </div>
+                <p className="text-xs text-rose-200">
+                  Your membership payment request was not approved by the Owner.
+                </p>
+                {latestRequest.rejectionReason && (
+                  <div className="bg-rose-950/50 p-3 rounded-xl border border-rose-800/50 text-xs text-rose-200">
+                    <strong>Admin Rejection Reason:</strong> {latestRequest.rejectionReason}
+                  </div>
+                )}
                 <button
                   onClick={() => setShowManualModal(true)}
                   className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs uppercase tracking-wider shadow-neon inline-flex items-center gap-2"
                 >
                   <PlusCircle className="w-4 h-4" />
-                  Submit New Verification Request
+                  Submit Payment Request Again
                 </button>
               </div>
             )}

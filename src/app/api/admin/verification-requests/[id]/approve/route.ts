@@ -144,8 +144,8 @@ export async function POST(
       await tx.notification.create({
         data: {
           userId: verificationRequest.userId,
-          title: "Membership Payment Approved!",
-          message: `Your payment of ₹${verificationRequest.amount} for ${verificationRequest.plan.name} has been verified and approved. Your active pass #${pass.passNumber} is now available!`,
+          title: "Membership Activated",
+          message: `Your ${verificationRequest.plan.name} membership payment has been verified and your membership is now active. Active pass #${pass.passNumber} is now available!`,
           type: "PAYMENT",
         },
       });

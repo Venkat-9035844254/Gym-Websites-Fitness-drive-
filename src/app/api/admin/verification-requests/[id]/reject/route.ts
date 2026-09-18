@@ -95,8 +95,8 @@ export async function POST(
       await tx.notification.create({
         data: {
           userId: verificationRequest.userId,
-          title: "Membership Verification Rejected",
-          message: `Your payment verification request for ${verificationRequest.plan.name} was rejected by Admin. Reason: "${rejectionReason.trim()}". You may resubmit a new request with valid details.`,
+          title: "Payment Request Rejected",
+          message: `Your membership payment request for ${verificationRequest.plan.name} was not approved by the Owner. Reason: "${rejectionReason.trim()}".`,
           type: "PAYMENT",
         },
       });

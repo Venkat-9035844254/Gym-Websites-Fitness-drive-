@@ -159,6 +159,16 @@ export async function POST(req: Request) {
         });
       }
 
+      // Create notification for the member confirming request submission
+      await tx.notification.create({
+        data: {
+          userId: authUser.id,
+          title: "Payment Request Submitted",
+          message: `Your membership payment request for ${plan.name} (${billingCycle}) has been submitted successfully. Please wait for Owner verification.`,
+          type: "PAYMENT",
+        },
+      });
+
       return verificationRequest;
     });
 
