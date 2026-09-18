@@ -50,6 +50,17 @@ export function ManualPaymentModal({
   const cycleLabel =
     selectedCycle === "MONTHLY" ? "Monthly" : selectedCycle === "SIX_MONTHS" ? "6 Months" : "Yearly";
 
+  React.useEffect(() => {
+    // Lock background body scroll when modal opens
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      // Restore background scroll when modal closes
+      document.body.style.overflow = originalStyle;
+    };
+  }, []);
+
   const handleSubmitVerification = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!transactionRef.trim()) {
@@ -98,10 +109,10 @@ export function ManualPaymentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto overscroll-contain">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden my-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50 shrink-0">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-cyan-400" />
             <span className="text-sm font-extrabold text-white font-display">
@@ -113,7 +124,7 @@ export function ManualPaymentModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmitVerification} className="p-6 space-y-6">
+        <form onSubmit={handleSubmitVerification} className="p-6 space-y-6 overflow-y-auto overscroll-contain">
           {/* Membership Plan Selection Dropdown */}
           <div className="space-y-2 bg-slate-950 p-4 rounded-2xl border border-slate-800">
             <label className="block text-xs font-extrabold text-cyan-400 uppercase tracking-wider">

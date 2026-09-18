@@ -30,7 +30,7 @@ import {
 } from "@/lib/reminderEngine";
 import { generateWorkoutPlan } from "@/lib/workoutGenerator";
 import { generateDietPlan } from "@/lib/dietGenerator";
-import { downloadWorkoutPlanPdf, downloadDietPlanPdf } from "@/lib/pdfGenerator";
+import { downloadWorkoutPlanPdf, downloadDietPlanPdf, downloadCombinedFitnessPlanPdf } from "@/lib/pdfGenerator";
 import { MembershipPassCard } from "@/components/membership/MembershipPassCard";
 import { ManualPaymentModal } from "@/components/membership/ManualPaymentModal";
 import {
@@ -211,44 +211,54 @@ export default function MemberDashboard() {
 
   // Load/Generate Workout & Diet Plans
   useEffect(() => {
-    if (!user || !memberProfile) return;
+    if (!user) return;
 
     let wp: GeneratedWorkoutPlan | null = null;
     let dp: GeneratedDietPlan | null = null;
 
-    if (memberProfile.workoutPlanJson) {
+    if (memberProfile?.workoutPlanJson) {
       try {
-        wp = JSON.parse(memberProfile.workoutPlanJson);
+        wp = typeof memberProfile.workoutPlanJson === "string"
+          ? JSON.parse(memberProfile.workoutPlanJson)
+          : memberProfile.workoutPlanJson;
       } catch (err) {
         console.error("Failed to parse workoutPlanJson:", err);
       }
     }
 
-    if (memberProfile.dietPlanJson) {
+    if (memberProfile?.dietPlanJson) {
       try {
-        dp = JSON.parse(memberProfile.dietPlanJson);
+        dp = typeof memberProfile.dietPlanJson === "string"
+          ? JSON.parse(memberProfile.dietPlanJson)
+          : memberProfile.dietPlanJson;
       } catch (err) {
         console.error("Failed to parse dietPlanJson:", err);
       }
     }
 
     if (!wp) {
-      wp = generateWorkoutPlan(user.id, memberProfile.workoutDays || 4);
+      wp = generateWorkoutPlan(user.id, memberProfile?.workoutDays || 4, {
+        fitnessGoal: memberProfile?.dietGoal || "Muscle Gain",
+        age: memberProfile?.age || 25,
+        gender: memberProfile?.gender || "Male",
+        weightKg: memberProfile?.currentWeightKg || (memberProfile as any)?.weightKg || 70,
+        heightCm: memberProfile?.heightCm || 175,
+      });
     }
 
     if (!dp) {
       dp = generateDietPlan(
         {
-          age: memberProfile.age || 25,
-          gender: memberProfile.gender || "Male",
-          heightCm: memberProfile.heightCm || 175,
-          weightKg: memberProfile.currentWeightKg || 70,
-          workoutDays: memberProfile.workoutDays || 4,
+          age: memberProfile?.age || 25,
+          gender: memberProfile?.gender || "Male",
+          heightCm: memberProfile?.heightCm || 175,
+          weightKg: memberProfile?.currentWeightKg || (memberProfile as any)?.weightKg || 70,
+          workoutDays: memberProfile?.workoutDays || 4,
         },
-        memberProfile.foodPreference || "Non-Vegetarian",
-        memberProfile.dietGoal || "Muscle Gain",
-        memberProfile.dietBudget || 7000,
-        memberProfile.dietBudgetPeriod || "MONTHLY"
+        memberProfile?.foodPreference || "Non-Vegetarian",
+        memberProfile?.dietGoal || "Muscle Gain",
+        memberProfile?.dietBudget || 7000,
+        memberProfile?.dietBudgetPeriod || "MONTHLY"
       );
     }
 
@@ -256,11 +266,11 @@ export default function MemberDashboard() {
     setDietPlan(dp);
 
     // Preset regeneration modal state
-    setRegenDays(memberProfile.workoutDays || 4);
-    setRegenFoodPref(memberProfile.foodPreference || "Non-Vegetarian");
-    setRegenGoal(memberProfile.dietGoal || "Muscle Gain");
-    setRegenBudget(memberProfile.dietBudget || 7000);
-    setRegenBudgetPeriod(memberProfile.dietBudgetPeriod || "MONTHLY");
+    setRegenDays(memberProfile?.workoutDays || 4);
+    setRegenFoodPref(memberProfile?.foodPreference || "Non-Vegetarian");
+    setRegenGoal(memberProfile?.dietGoal || "Muscle Gain");
+    setRegenBudget(memberProfile?.dietBudget || 7000);
+    setRegenBudgetPeriod(memberProfile?.dietBudgetPeriod || "MONTHLY");
   }, [user, memberProfile]);
 
   // Attendance count calculation
@@ -787,6 +797,31 @@ export default function MemberDashboard() {
               </div>
             </div>
           </div>
+
+          {/* Combined Master PDF Export Banner */}
+          {(workoutPlan || dietPlan) && (
+            <div className="bg-gradient-to-r from-slate-900 via-cyan-950/40 to-slate-900 border border-cyan-500/30 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-white">Download Complete Master Fitness & Nutrition PDF</h4>
+                  <p className="text-xs text-slate-400">
+                    Get a single formatted document containing your personalized Workout Routine, Exercise Schedules, and Diet Plans.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => downloadCombinedFitnessPlanPdf(user!, memberProfile, workoutPlan, dietPlan)}
+                className="px-6 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-neon shrink-0 flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download Master PDF</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -1033,13 +1068,24 @@ export default function MemberDashboard() {
                 Regenerate Plan
               </button>
               {workoutPlan && (
-                <button
-                  onClick={() => downloadWorkoutPlanPdf(user!, memberProfile, workoutPlan)}
-                  className="px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase shadow-neon flex items-center gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  Download PDF
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => downloadWorkoutPlanPdf(user!, memberProfile, workoutPlan)}
+                    className="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 text-xs font-bold flex items-center gap-2"
+                    title="Download Workout Only PDF"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Workout PDF</span>
+                  </button>
+                  <button
+                    onClick={() => downloadCombinedFitnessPlanPdf(user!, memberProfile, workoutPlan, dietPlan)}
+                    className="px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase shadow-neon flex items-center gap-2"
+                    title="Download Master Combined (Workout + Diet) PDF"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Combined Master PDF</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -1230,13 +1276,24 @@ export default function MemberDashboard() {
                 Regenerate Diet
               </button>
               {dietPlan && (
-                <button
-                  onClick={() => downloadDietPlanPdf(user!, memberProfile, dietPlan)}
-                  className="px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase shadow-neon flex items-center gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  Download PDF
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => downloadDietPlanPdf(user!, memberProfile, dietPlan)}
+                    className="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 text-xs font-bold flex items-center gap-2"
+                    title="Download Diet Only PDF"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Diet PDF</span>
+                  </button>
+                  <button
+                    onClick={() => downloadCombinedFitnessPlanPdf(user!, memberProfile, workoutPlan, dietPlan)}
+                    className="px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase shadow-neon flex items-center gap-2"
+                    title="Download Master Combined (Workout + Diet) PDF"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Combined Master PDF</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>
