@@ -127,32 +127,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const data = await res.json();
 
-      if (!res.ok || !data.success) {
-        return {
-          success: false,
-          message: data.message || "Authentication failed. Please check your credentials.",
-        };
+      if (res.ok && data.success) {
+        const authenticatedUser: User = data.user;
+        setUser(authenticatedUser);
+        localStorage.setItem("apex_active_user", JSON.stringify(authenticatedUser));
+
+        if (data.memberProfile) setMemberProfile(data.memberProfile);
+        if (data.trainerProfile) setTrainerProfile(data.trainerProfile);
+
+        // Sync user into stored local list
+        const users = getStoredUsers();
+        if (!users.some((u) => u.id === authenticatedUser.id)) {
+          saveUsers([...users, { ...authenticatedUser, password }]);
+        }
+
+        return { success: true, user: authenticatedUser };
       }
 
-      const authenticatedUser: User = data.user;
-      setUser(authenticatedUser);
-      localStorage.setItem("apex_active_user", JSON.stringify(authenticatedUser));
+      // Fallback check against browser local storage (for Vercel serverless ephemeral SQLite environments)
+      const storedUsers = getStoredUsers();
+      const localUser = storedUsers.find((u) => u.email.trim().toLowerCase() === email.trim().toLowerCase());
 
-      if (data.memberProfile) setMemberProfile(data.memberProfile);
-      if (data.trainerProfile) setTrainerProfile(data.trainerProfile);
-
-      // Sync user into stored local list
-      const users = getStoredUsers();
-      if (!users.some((u) => u.id === authenticatedUser.id)) {
-        saveUsers([...users, authenticatedUser]);
+      if (localUser) {
+        if (localUser.password && password && localUser.password !== password) {
+          return { success: false, message: "Incorrect password. Please try again." };
+        }
+        setUser(localUser);
+        localStorage.setItem("apex_active_user", JSON.stringify(localUser));
+        loadProfilesForUser(localUser);
+        return { success: true, user: localUser };
       }
 
-      return { success: true, user: authenticatedUser };
+      return {
+        success: false,
+        message: data.message || "No registered account found with that email address.",
+      };
     } catch (err: any) {
       console.error("[AUTH] Login network error:", err);
       // Fallback local check if API endpoint unavailable
       const users = getStoredUsers();
-      const foundUser = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      const foundUser = users.find((u) => u.email.trim().toLowerCase() === email.trim().toLowerCase());
 
       if (!foundUser) {
         return { success: false, message: "No registered account found with that email address." };
@@ -216,7 +230,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
-      const newUser: User = data.user;
+      const newUser: User = { ...data.user, password };
       const newMemberProfile: MemberProfile | null = data.memberProfile;
 
       setUser(newUser);
@@ -225,7 +239,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Sync into local storage list so UI components receive updated users
       const users = getStoredUsers();
-      saveUsers([...users, newUser]);
+      saveUsers([...users.filter((u) => u.email.toLowerCase() !== newUser.email.toLowerCase()), newUser]);
 
       if (newMemberProfile) {
         const members = getStoredMembers();
