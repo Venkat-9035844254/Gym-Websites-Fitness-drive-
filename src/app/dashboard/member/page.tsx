@@ -67,7 +67,9 @@ import {
   Wallet,
   CheckSquare,
   Info,
+  LogOut,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -84,8 +86,15 @@ import { PaymentModal } from "@/components/checkout/PaymentModal";
 import { FitnessOnboardingModal } from "@/components/onboarding/FitnessOnboardingModal";
 
 export default function MemberDashboard() {
-  const { user, memberProfile, updateProfile } = useAuth();
+  const { user, memberProfile, updateProfile, logout } = useAuth();
   const { showToast } = useNotification();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!user) {
+      router.replace("/login");
+    }
+  }, [user, router]);
 
   const [workouts, setWorkouts] = useState(getStoredWorkouts());
   const [measurements, setMeasurements] = useState(getStoredMeasurements());
@@ -447,12 +456,71 @@ export default function MemberDashboard() {
   const activeDietDaysList = dietViewMode === "WEEKLY" ? (dietPlan?.weeklyPlan || []) : (dietPlan?.monthlyPlan || []);
   const selectedDietDay = activeDietDaysList.find((d) => d.dayNumber === selectedDietDayNumber) || activeDietDaysList[0];
 
+  if (!user) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-slate-400 font-medium">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Onboarding Modal Trigger */}
       {showOnboardingModal && (
         <FitnessOnboardingModal onClose={() => setShowOnboardingModal(false)} />
       )}
+
+      {/* MEMBER ACCOUNT PROFILE & LOGOUT HEADER CARD */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="relative shrink-0">
+            {user?.avatar ? (
+              <Image
+                src={user.avatar}
+                alt={user.name || "Member Avatar"}
+                width={64}
+                height={64}
+                className="rounded-2xl border-2 border-cyan-500/40 object-cover"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border-2 border-cyan-500/40 flex items-center justify-center text-cyan-400 font-black text-2xl font-display">
+                {user?.name?.[0]?.toUpperCase() || "M"}
+              </div>
+            )}
+            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-slate-900" title="Online" />
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-black text-white font-display">
+                Welcome back, {user?.name || "Member"}!
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-[10px] font-bold uppercase tracking-wider">
+                Member Account
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 flex items-center gap-3 flex-wrap">
+              <span>📧 {user?.email || "N/A"}</span>
+              {user?.phone && <span>• 📞 {user.phone}</span>}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+          <button
+            onClick={() => logout()}
+            className="w-full md:w-auto px-5 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
+            title="Logout from Member Account"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Logout Account</span>
+          </button>
+        </div>
+      </div>
 
       {/* MEMBERSHIP STATUS BANNER / PROMPT */}
       {(() => {

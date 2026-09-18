@@ -2,13 +2,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateWorkoutPlan } from "@/lib/workoutGenerator";
 import { generateDietPlan } from "@/lib/dietGenerator";
+import jwt from "jsonwebtoken";
 
 export const dynamic = "force-dynamic";
 
+const JWT_SECRET = process.env.JWT_SECRET || "fitness_drive_stable_jwt_secret_key_2026";
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const {
+    const body = await req.json().catch(() => ({}));
+    let {
       userId,
       workoutDays,
       foodPreference,
@@ -21,13 +24,71 @@ export async function POST(req: Request) {
       weightKg,
     } = body;
 
+    // Fallback: extract userId from JWT cookie if missing from body
     if (!userId) {
-      return NextResponse.json({ success: false, message: "User ID is required." }, { status: 400 });
+      try {
+        const cookieHeader = req.headers.get("cookie") || "";
+        const cookies = cookieHeader.split(";").reduce((acc: Record<string, string>, cur) => {
+          const [k, v] = cur.trim().split("=");
+          if (k && v) acc[k] = v;
+          return acc;
+        }, {});
+        const token = cookies["apex_token"];
+        if (token) {
+          const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+          if (decoded?.userId) userId = decoded.userId;
+        }
+      } catch (tokenErr) {
+        // Ignore token decoding error
+      }
     }
 
-    const memberProfile = await prisma.memberProfile.findUnique({
-      where: { userId },
-    });
+    if (!userId) {
+      return NextResponse.json({ success: false, message: "User session or User ID is required." }, { status: 400 });
+    }
+
+    let memberProfile = null;
+    try {
+      memberProfile = await prisma.memberProfile.findUnique({
+        where: { userId },
+      });
+    } catch (dbErr: any) {
+      console.error("[API] Database error during memberProfile lookup:", dbErr);
+      return NextResponse.json(
+        { success: false, message: "Database error occurred while retrieving member profile. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    // Auto-create memberProfile in DB if user exists but profile was missing
+    if (!memberProfile) {
+      try {
+        const userRecord = await prisma.user.findUnique({ where: { id: userId } });
+        if (userRecord && userRecord.role === "MEMBER") {
+          const newMemberProfileId = `mem-${Date.now()}`;
+          const qrCodeVal = `APEX-MEM-${Math.floor(100000 + Math.random() * 900000)}`;
+          memberProfile = await prisma.memberProfile.create({
+            data: {
+              id: newMemberProfileId,
+              userId: userRecord.id,
+              qrCode: qrCodeVal,
+              membershipStatus: "ACTIVE",
+              age: age ? parseInt(age, 10) : 25,
+              gender: gender || "Male",
+              heightCm: heightCm ? parseFloat(heightCm) : 175,
+              weightKg: weightKg ? parseFloat(weightKg) : 70,
+              workoutDays: workoutDays ? parseInt(workoutDays, 10) : 4,
+              foodPreference: foodPreference || "Non-Vegetarian",
+              dietGoal: dietGoal || "Muscle Gain",
+              dietBudget: dietBudget ? parseFloat(dietBudget) : 7000,
+              dietBudgetPeriod: dietBudgetPeriod || "MONTHLY",
+            },
+          });
+        }
+      } catch (createErr) {
+        console.error("[API] Failed creating missing member profile in DB:", createErr);
+      }
+    }
 
     if (!memberProfile) {
       return NextResponse.json({ success: false, message: "Member profile not found." }, { status: 404 });
@@ -63,22 +124,31 @@ export async function POST(req: Request) {
     newDietPlan.userId = userId;
 
     // Update DB
-    const updatedProfile = await prisma.memberProfile.update({
-      where: { userId },
-      data: {
-        workoutDays: parsedDays,
-        foodPreference: parsedFoodPref,
-        dietGoal: parsedDietGoal,
-        dietBudget: parsedBudget,
-        dietBudgetPeriod: parsedBudgetPeriod,
-        age: parsedAge,
-        heightCm: parsedHeight,
-        weightKg: parsedWeight,
-        gender: parsedGender,
-        workoutPlanJson: JSON.stringify(newWorkoutPlan),
-        dietPlanJson: JSON.stringify(newDietPlan),
-      },
-    });
+    let updatedProfile = memberProfile;
+    try {
+      updatedProfile = await prisma.memberProfile.update({
+        where: { userId },
+        data: {
+          workoutDays: parsedDays,
+          foodPreference: parsedFoodPref,
+          dietGoal: parsedDietGoal,
+          dietBudget: parsedBudget,
+          dietBudgetPeriod: parsedBudgetPeriod,
+          age: parsedAge,
+          heightCm: parsedHeight,
+          weightKg: parsedWeight,
+          gender: parsedGender,
+          workoutPlanJson: JSON.stringify(newWorkoutPlan),
+          dietPlanJson: JSON.stringify(newDietPlan),
+        },
+      });
+    } catch (updateErr: any) {
+      console.error("[API] Database error during memberProfile update:", updateErr);
+      return NextResponse.json(
+        { success: false, message: "Failed to update profile plans in database. Please try again." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -88,10 +158,11 @@ export async function POST(req: Request) {
       dietPlan: newDietPlan,
     });
   } catch (error: any) {
-    console.error("[API] Plan regeneration error:", error);
+    console.error("[API] Plan regeneration unhandled error:", error);
     return NextResponse.json(
-      { success: false, message: error?.message || "Failed to regenerate plans." },
+      { success: false, message: "An unexpected error occurred while regenerating plans. Please try again." },
       { status: 500 }
     );
   }
 }
+

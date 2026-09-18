@@ -58,12 +58,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsLoaded(true);
           return;
         }
+      } else if (res.status === 401) {
+        // Explicitly unauthenticated / logged out from server session
+        setUser(null);
+        setMemberProfile(null);
+        setTrainerProfile(null);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("apex_active_user");
+        }
+        await syncUsersListFromApi();
+        setIsLoaded(true);
+        return;
       }
     } catch (err) {
-      console.warn("[AUTH] Session check API error, checking local backup:", err);
+      console.warn("[AUTH] Session check API network error, checking local backup:", err);
     }
 
-    // 2. Fallback to localStorage backup
+    // 2. Fallback to localStorage backup ONLY if network failed
     const storedUserJson = typeof window !== "undefined" ? localStorage.getItem("apex_active_user") : null;
     if (storedUserJson) {
       try {
@@ -202,7 +213,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setMemberProfile(null);
       setTrainerProfile(null);
-      localStorage.removeItem("apex_active_user");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("apex_active_user");
+        window.location.href = "/login";
+      }
     }
   };
 
