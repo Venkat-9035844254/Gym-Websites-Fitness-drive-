@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getExerciseById, normalizeCategoryParam } from "@/lib/cloudinaryService";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: { category: string; exerciseId: string } }

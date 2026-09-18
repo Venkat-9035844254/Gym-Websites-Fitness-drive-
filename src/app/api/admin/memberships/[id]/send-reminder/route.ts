@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { runMembershipExpiryCheck } from "@/lib/reminderEngine";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }

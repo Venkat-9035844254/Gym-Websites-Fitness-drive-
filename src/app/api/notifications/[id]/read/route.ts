@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getStoredNotificationLogs, saveNotificationLogs } from "@/lib/storage";
 
+export const dynamic = "force-dynamic";
+
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }

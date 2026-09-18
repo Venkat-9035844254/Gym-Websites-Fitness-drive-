@@ -28,7 +28,7 @@ export async function runReminderTestSuite() {
   // Test 4: Member renewal clears old reminder requirement
   const members = getStoredMembers();
   const harsha = members[0];
-  const oldExpiry = harsha.expiryDate;
+  const oldExpiry = harsha.expiryDate || new Date().toISOString().split("T")[0];
 
   // Extend expiry by 30 days
   const extendedDate = new Date(oldExpiry);

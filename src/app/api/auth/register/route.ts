@@ -5,6 +5,8 @@ import jwt from "jsonwebtoken";
 import { generateWorkoutPlan } from "@/lib/workoutGenerator";
 import { generateDietPlan } from "@/lib/dietGenerator";
 
+export const dynamic = "force-dynamic";
+
 const JWT_SECRET = process.env.JWT_SECRET || "fitness_drive_stable_jwt_secret_key_2026";
 
 export async function POST(req: Request) {
