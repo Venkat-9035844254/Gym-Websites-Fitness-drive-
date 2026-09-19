@@ -105,7 +105,18 @@ export async function POST(req: Request) {
     const parsedGender = gender || memberProfile.gender || "Male";
 
     // Generate new Workout & Diet Plans
-    const newWorkoutPlan = generateWorkoutPlan(userId, parsedDays);
+    const newWorkoutPlan = generateWorkoutPlan(userId, parsedDays, {
+      age: parsedAge,
+      gender: parsedGender,
+      heightCm: parsedHeight,
+      weightKg: parsedWeight,
+      fitnessGoal: parsedDietGoal,
+      workoutExperience: body.workoutExperience,
+      equipment: body.equipment,
+      workoutType: body.workoutType,
+      limitations: body.limitations,
+    });
+
     const newDietPlan = generateDietPlan(
       {
         age: parsedAge,

@@ -293,6 +293,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         saveMembers(members);
       }
     }
+
+    // Persist to backend database asynchronously
+    fetch("/api/members/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedData),
+    }).catch((err) => console.error("[AUTH] Async profile update sync error:", err));
   };
 
   if (!isLoaded) return null;

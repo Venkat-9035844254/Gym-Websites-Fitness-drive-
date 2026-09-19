@@ -51,13 +51,25 @@ export function ManualPaymentModal({
     selectedCycle === "MONTHLY" ? "Monthly" : selectedCycle === "SIX_MONTHS" ? "6 Months" : "Yearly";
 
   React.useEffect(() => {
-    // Lock background body scroll when modal opens
-    const originalStyle = window.getComputedStyle(document.body).overflow;
+    // Lock background body scroll when modal opens to prevent background scrolling/jumping
+    const scrollY = window.scrollY;
+    const originalStyleOverflow = document.body.style.overflow;
+    const originalStylePosition = document.body.style.position;
+    const originalStyleTop = document.body.style.top;
+    const originalStyleWidth = document.body.style.width;
+
     document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
 
     return () => {
-      // Restore background scroll when modal closes
-      document.body.style.overflow = originalStyle;
+      // Restore background scroll cleanly when modal closes
+      document.body.style.overflow = originalStyleOverflow;
+      document.body.style.position = originalStylePosition;
+      document.body.style.top = originalStyleTop;
+      document.body.style.width = originalStyleWidth;
+      window.scrollTo(0, scrollY);
     };
   }, []);
 
@@ -109,8 +121,16 @@ export function ManualPaymentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto overscroll-contain">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden my-auto">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200 overflow-hidden touch-none"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl max-w-lg w-full max-h-[85vh] sm:max-h-[90vh] flex flex-col overflow-hidden my-auto relative z-10"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50 shrink-0">
           <div className="flex items-center gap-2">
@@ -124,7 +144,10 @@ export function ManualPaymentModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmitVerification} className="p-6 space-y-6 overflow-y-auto overscroll-contain">
+        <form
+          onSubmit={handleSubmitVerification}
+          className="p-4 sm:p-6 space-y-5 overflow-y-auto overscroll-contain touch-pan-y flex-1"
+        >
           {/* Membership Plan Selection Dropdown */}
           <div className="space-y-2 bg-slate-950 p-4 rounded-2xl border border-slate-800">
             <label className="block text-xs font-extrabold text-cyan-400 uppercase tracking-wider">

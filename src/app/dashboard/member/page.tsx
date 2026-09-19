@@ -192,6 +192,10 @@ export default function MemberDashboard() {
   const [regenGoal, setRegenGoal] = useState<DietGoal>("Muscle Gain");
   const [regenBudget, setRegenBudget] = useState<number>(7000);
   const [regenBudgetPeriod, setRegenBudgetPeriod] = useState<DietBudgetPeriod>("MONTHLY");
+  const [regenExperience, setRegenExperience] = useState<string>("Intermediate");
+  const [regenEquipment, setRegenEquipment] = useState<string>("Full Gym");
+  const [regenWorkoutType, setRegenWorkoutType] = useState<string>("Hypertrophy");
+  const [regenLimitations, setRegenLimitations] = useState<string>("");
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
 
   // New weight log form state
@@ -371,6 +375,14 @@ export default function MemberDashboard() {
           dietGoal: regenGoal,
           dietBudget: regenBudget,
           dietBudgetPeriod: regenBudgetPeriod,
+          workoutExperience: regenExperience,
+          equipment: regenEquipment,
+          workoutType: regenWorkoutType,
+          limitations: regenLimitations,
+          age: memberProfile?.age || 25,
+          gender: memberProfile?.gender || "Male",
+          heightCm: memberProfile?.heightCm || 175,
+          weightKg: memberProfile?.currentWeightKg || (memberProfile as any)?.weightKg || 70,
         }),
       });
 
@@ -387,7 +399,7 @@ export default function MemberDashboard() {
           workoutPlanJson: JSON.stringify(data.workoutPlan),
           dietPlanJson: JSON.stringify(data.dietPlan),
         });
-        showToast("Plans Regenerated!", "Your Workout and Diet plans have been updated.", "success");
+        showToast("Plans Regenerated!", "Your Workout and Diet plans have been updated dynamically.", "success");
         setShowRegenerateModal(false);
       } else {
         showToast("Regeneration Error", data.message || "Failed to regenerate plans.", "error");
@@ -1113,33 +1125,51 @@ export default function MemberDashboard() {
             </div>
           </div>
 
-          {/* Day Tabs Selector */}
-          <div className="flex overflow-x-auto gap-2 p-1.5 bg-slate-950 border border-slate-800 rounded-2xl">
-            {workoutPlan?.days.map((day) => (
+          {/* Day Tabs Selector & Selected Day Content */}
+          {!workoutPlan || !workoutPlan.days || workoutPlan.days.length === 0 ? (
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center space-y-4 shadow-xl">
+              <Dumbbell className="w-12 h-12 text-cyan-400 mx-auto animate-pulse" />
+              <h3 className="text-xl font-bold text-white font-display">No Workout Plan Found</h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                Your personalized workout plan can be generated dynamically based on your physical details and fitness goals.
+              </p>
               <button
-                key={day.dayNumber}
-                onClick={() => setSelectedWorkoutDayNumber(day.dayNumber)}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 ${
-                  selectedWorkoutDayNumber === day.dayNumber
-                    ? "bg-cyan-500 text-slate-950 font-black shadow-neon"
-                    : "bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
-                }`}
+                onClick={() => setShowRegenerateModal(true)}
+                className="px-6 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-neon inline-flex items-center gap-2"
               >
-                <span>{day.dayName}</span>
-                {day.isRestDay ? (
-                  <span className="text-[10px] opacity-75">(REST)</span>
-                ) : (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-950/40 text-slate-200">
-                    {day.exercises.filter((e) => e.completed).length}/{day.exercises.length}
-                  </span>
-                )}
+                <RefreshCw className="w-4 h-4" />
+                <span>Generate Dynamic Workout Plan</span>
               </button>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <>
+              {/* Day Tabs Selector */}
+              <div className="flex overflow-x-auto gap-2 p-1.5 bg-slate-950 border border-slate-800 rounded-2xl">
+                {workoutPlan.days.map((day) => (
+                  <button
+                    key={day.dayNumber}
+                    onClick={() => setSelectedWorkoutDayNumber(day.dayNumber)}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 ${
+                      selectedWorkoutDayNumber === day.dayNumber
+                        ? "bg-cyan-500 text-slate-950 font-black shadow-neon"
+                        : "bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    <span>{day.dayName}</span>
+                    {day.isRestDay ? (
+                      <span className="text-[10px] opacity-75">(REST)</span>
+                    ) : (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-950/40 text-slate-200">
+                        {day.exercises.filter((e) => e.completed).length}/{day.exercises.length}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
 
-          {/* Selected Day Content */}
-          {selectedWorkoutDay && (
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+              {/* Selected Day Content */}
+              {selectedWorkoutDay && (
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-4">
                 <div>
                   <span className="text-xs font-bold uppercase text-cyan-400">{selectedWorkoutDay.dayName} Routine</span>
@@ -1246,8 +1276,10 @@ export default function MemberDashboard() {
               )}
             </div>
           )}
-        </div>
+        </>
       )}
+    </div>
+  )}
 
       {/* MY DIET PLAN TAB */}
       {activeTab === "NUTRITION" && (
@@ -1364,26 +1396,44 @@ export default function MemberDashboard() {
             </div>
           </div>
 
-          {/* Day Selector Bar */}
-          <div className="flex overflow-x-auto gap-2 p-1.5 bg-slate-950 border border-slate-800 rounded-2xl">
-            {activeDietDaysList.map((day) => (
+          {/* Day Selector Bar & Selected Day Meals Grid */}
+          {!dietPlan || !activeDietDaysList || activeDietDaysList.length === 0 ? (
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center space-y-4 shadow-xl">
+              <Utensils className="w-12 h-12 text-emerald-400 mx-auto animate-pulse" />
+              <h3 className="text-xl font-bold text-white font-display">No Diet Plan Found</h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                Your personalized nutrition plan can be generated dynamically based on your food preferences and daily caloric targets.
+              </p>
               <button
-                key={day.dayNumber}
-                onClick={() => setSelectedDietDayNumber(day.dayNumber)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold shrink-0 ${
-                  selectedDietDayNumber === day.dayNumber
-                    ? "bg-emerald-500 text-slate-950 font-black shadow-neon"
-                    : "bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
-                }`}
+                onClick={() => setShowRegenerateModal(true)}
+                className="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-neon inline-flex items-center gap-2"
               >
-                {day.dayName}
+                <RefreshCw className="w-4 h-4" />
+                <span>Generate Dynamic Diet Plan</span>
               </button>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <>
+              {/* Day Selector Bar */}
+              <div className="flex overflow-x-auto gap-2 p-1.5 bg-slate-950 border border-slate-800 rounded-2xl">
+                {activeDietDaysList.map((day) => (
+                  <button
+                    key={day.dayNumber}
+                    onClick={() => setSelectedDietDayNumber(day.dayNumber)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold shrink-0 ${
+                      selectedDietDayNumber === day.dayNumber
+                        ? "bg-emerald-500 text-slate-950 font-black shadow-neon"
+                        : "bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {day.dayName}
+                  </button>
+                ))}
+              </div>
 
-          {/* Selected Day Meals Grid */}
-          {selectedDietDay && (
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+              {/* Selected Day Meals Grid */}
+              {selectedDietDay && (
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
               <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                 <div>
                   <span className="text-xs font-bold uppercase text-emerald-400">{selectedDietDay.dayName} Meals</span>
@@ -1424,8 +1474,10 @@ export default function MemberDashboard() {
               </div>
             </div>
           )}
-        </div>
+        </>
       )}
+    </div>
+  )}
 
       {/* PROGRESS TAB */}
       {activeTab === "PROGRESS" && (
@@ -1703,60 +1755,106 @@ export default function MemberDashboard() {
 
       {/* PLAN REGENERATION MODAL WITH CONFIRMATION */}
       {showRegenerateModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6">
-            <div className="space-y-2">
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden touch-none">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full max-h-[85vh] sm:max-h-[90vh] shadow-2xl flex flex-col overflow-hidden my-auto relative z-10">
+            <div className="space-y-2 pb-4 border-b border-slate-800 shrink-0">
               <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 w-fit">
                 <RefreshCw className="w-6 h-6 stroke-[2.5]" />
               </div>
               <h3 className="text-xl font-black text-white font-display">Regenerate Workout & Diet Plans</h3>
-              <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl">
-                ⚠️ <strong>Confirmation Required:</strong> Are you sure you want to generate a new workout and diet plan? Your current plan will be replaced based on your updated preferences.
+              <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-xl">
+                ⚠️ <strong>Confirmation Required:</strong> Generating new plans will replace your active schedules using your latest biometrics & preferences.
               </p>
             </div>
 
-            <form onSubmit={handleConfirmRegenerate} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-400 uppercase font-bold text-[10px] mb-1">Workout Days Per Week</label>
-                <select
-                  value={regenDays}
-                  onChange={(e) => setRegenDays(parseInt(e.target.value, 10))}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-cyan-400"
-                >
-                  <option value={3}>3 Days Per Week</option>
-                  <option value={4}>4 Days Per Week</option>
-                  <option value={5}>5 Days Per Week</option>
-                  <option value={6}>6 Days Per Week</option>
-                </select>
+            <form onSubmit={handleConfirmRegenerate} className="space-y-4 text-xs overflow-y-auto overscroll-contain touch-pan-y flex-1 py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 uppercase font-bold text-[10px] mb-1">Workout Days Per Week</label>
+                  <select
+                    value={regenDays}
+                    onChange={(e) => setRegenDays(parseInt(e.target.value, 10))}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-cyan-400"
+                  >
+                    <option value={3}>3 Days Per Week</option>
+                    <option value={4}>4 Days Per Week</option>
+                    <option value={5}>5 Days Per Week</option>
+                    <option value={6}>6 Days Per Week</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 uppercase font-bold text-[10px] mb-1">Experience Level</label>
+                  <select
+                    value={regenExperience}
+                    onChange={(e) => setRegenExperience(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-cyan-400"
+                  >
+                    <option value="Beginner">Beginner (0-6 months)</option>
+                    <option value="Intermediate">Intermediate (6-24 months)</option>
+                    <option value="Advanced">Advanced (2+ years)</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-slate-400 uppercase font-bold text-[10px] mb-1">Food Preference</label>
-                <select
-                  value={regenFoodPref}
-                  onChange={(e: any) => setRegenFoodPref(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-cyan-400"
-                >
-                  <option value="Vegetarian">Vegetarian (No Eggs/Meat)</option>
-                  <option value="Vegetarian + Eggs">Vegetarian + Eggs</option>
-                  <option value="Non-Vegetarian">Non-Vegetarian</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 uppercase font-bold text-[10px] mb-1">Equipment Availability</label>
+                  <select
+                    value={regenEquipment}
+                    onChange={(e) => setRegenEquipment(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-cyan-400"
+                  >
+                    <option value="Full Gym">Full Gym Access</option>
+                    <option value="Dumbbells Only">Dumbbells & Bench Only</option>
+                    <option value="Home / Bodyweight">Home / Bodyweight Only</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 uppercase font-bold text-[10px] mb-1">Preferred Workout Type</label>
+                  <select
+                    value={regenWorkoutType}
+                    onChange={(e) => setRegenWorkoutType(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-cyan-400"
+                  >
+                    <option value="Hypertrophy">Hypertrophy / Muscle Building</option>
+                    <option value="Strength">Strength & Heavy Power</option>
+                    <option value="Fat Loss / HIIT">Fat Loss & HIIT Circuits</option>
+                    <option value="Calisthenics">Calisthenics & Bodyweight</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-slate-400 uppercase font-bold text-[10px] mb-1">Fitness / Diet Goal</label>
-                <select
-                  value={regenGoal}
-                  onChange={(e: any) => setRegenGoal(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-cyan-400"
-                >
-                  <option value="Weight Loss">Weight Loss</option>
-                  <option value="Weight Gain">Weight Gain</option>
-                  <option value="Muscle Gain">Muscle Gain</option>
-                  <option value="Fat Loss">Fat Loss</option>
-                  <option value="Maintenance">Maintenance</option>
-                  <option value="General Fitness">General Fitness</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 uppercase font-bold text-[10px] mb-1">Food Preference</label>
+                  <select
+                    value={regenFoodPref}
+                    onChange={(e: any) => setRegenFoodPref(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-cyan-400"
+                  >
+                    <option value="Vegetarian">Vegetarian (No Eggs/Meat)</option>
+                    <option value="Vegetarian + Eggs">Vegetarian + Eggs</option>
+                    <option value="Non-Vegetarian">Non-Vegetarian</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 uppercase font-bold text-[10px] mb-1">Fitness / Diet Goal</label>
+                  <select
+                    value={regenGoal}
+                    onChange={(e: any) => setRegenGoal(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-cyan-400"
+                  >
+                    <option value="Weight Loss">Weight Loss</option>
+                    <option value="Weight Gain">Weight Gain</option>
+                    <option value="Muscle Gain">Muscle Gain</option>
+                    <option value="Fat Loss">Fat Loss</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="General Fitness">General Fitness</option>
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1766,15 +1864,15 @@ export default function MemberDashboard() {
                     type="number"
                     value={regenBudget}
                     onChange={(e) => setRegenBudget(parseFloat(e.target.value))}
-                    className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-cyan-400"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-cyan-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 uppercase font-bold text-[10px] mb-1">Period</label>
+                  <label className="block text-slate-400 uppercase font-bold text-[10px] mb-1">Budget Period</label>
                   <select
                     value={regenBudgetPeriod}
                     onChange={(e: any) => setRegenBudgetPeriod(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-cyan-400"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-cyan-400"
                   >
                     <option value="MONTHLY">Monthly</option>
                     <option value="WEEKLY">Weekly</option>
@@ -1782,18 +1880,29 @@ export default function MemberDashboard() {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div>
+                <label className="block text-slate-400 uppercase font-bold text-[10px] mb-1">Physical Limitations / Notes (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. knee care, back sensitivity, no overhead presses"
+                  value={regenLimitations}
+                  onChange={(e) => setRegenLimitations(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white outline-none focus:border-cyan-400"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowRegenerateModal(false)}
-                  className="w-1/3 py-3.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs uppercase"
+                  className="w-1/3 py-3 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs uppercase"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isRegenerating}
-                  className="w-2/3 py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase shadow-neon flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-2/3 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase shadow-neon flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isRegenerating ? "Regenerating..." : "Confirm & Regenerate Plans"}
                 </button>

@@ -221,9 +221,9 @@ export function downloadCombinedFitnessPlanPdf(
 
   // User Profile Header Box
   doc.setFillColor(248, 250, 252);
-  doc.rect(14, 34, 182, 26, "F");
+  doc.rect(14, 34, 182, 32, "F");
   doc.setDrawColor(203, 213, 225);
-  doc.rect(14, 34, 182, 26, "S");
+  doc.rect(14, 34, 182, 32, "S");
 
   doc.setTextColor(15, 23, 42);
   doc.setFontSize(9);
@@ -231,12 +231,14 @@ export function downloadCombinedFitnessPlanPdf(
   doc.text(`Member Name: ${user.name}`, 18, 41);
   doc.text(`Email: ${user.email}`, 18, 47);
   doc.text(`Phone: ${user.phone || "N/A"}`, 18, 53);
+  doc.text(`Age / Gender: ${memberProfile?.age || 25} yrs | ${memberProfile?.gender || "Male"}`, 18, 59);
 
   doc.text(`Fitness Goal: ${memberProfile?.dietGoal || dietPlan?.dietGoal || "Muscle Gain"}`, 110, 41);
   doc.text(`Food Preference: ${dietPlan?.foodPreference || memberProfile?.foodPreference || "Non-Vegetarian"}`, 110, 47);
-  doc.text(`Generated Date: ${new Date().toLocaleDateString()}`, 110, 53);
+  doc.text(`Height / Weight: ${memberProfile?.heightCm || 175} cm | ${memberProfile?.currentWeightKg || (memberProfile as any)?.weightKg || 70} kg`, 110, 53);
+  doc.text(`Generated Date: ${new Date().toLocaleDateString()}`, 110, 59);
 
-  let currentY = 66;
+  let currentY = 72;
 
   // SECTION 1: WORKOUT PLAN
   if (workoutPlan) {

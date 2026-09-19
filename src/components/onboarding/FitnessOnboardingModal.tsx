@@ -52,7 +52,29 @@ export function FitnessOnboardingModal({ onClose }: FitnessOnboardingModalProps)
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    // Lock background scroll when onboarding modal is open
+    const scrollY = window.scrollY;
+    const originalStyleOverflow = document.body.style.overflow;
+    const originalStylePosition = document.body.style.position;
+    const originalStyleTop = document.body.style.top;
+    const originalStyleWidth = document.body.style.width;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+
+    return () => {
+      document.body.style.overflow = originalStyleOverflow;
+      document.body.style.position = originalStylePosition;
+      document.body.style.top = originalStyleTop;
+      document.body.style.width = originalStyleWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) {
       showToast("Validation Error", "Please correct the highlighted fields before submitting.", "error");
@@ -97,7 +119,7 @@ export function FitnessOnboardingModal({ onClose }: FitnessOnboardingModalProps)
     const carbGrams = Math.max(50, Math.round(carbCalories / 4));
     const waterLiters = parseFloat((weightKgNum * 0.035).toFixed(1));
 
-    // 5. Update Profile
+    // 5. Update Profile locally & in DB
     updateProfile({
       currentWeightKg: weightKgNum,
       targetWeightKg: targetWeightKgNum,
@@ -125,6 +147,30 @@ export function FitnessOnboardingModal({ onClose }: FitnessOnboardingModalProps)
         bodyFatPct: 15.0,
       };
       saveMeasurements([newMeasurement, ...existing]);
+    }
+
+    // 7. Trigger dynamic plan generation on server
+    try {
+      if (user?.id) {
+        await fetch("/api/plans/regenerate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            age: ageNum,
+            gender,
+            heightCm: heightCmNum,
+            weightKg: weightKgNum,
+            workoutDays: memberProfile?.workoutDays || 4,
+            foodPreference: memberProfile?.foodPreference || "Non-Vegetarian",
+            dietGoal: fitnessGoal,
+            dietBudget: memberProfile?.dietBudget || 7000,
+            dietBudgetPeriod: memberProfile?.dietBudgetPeriod || "MONTHLY",
+          }),
+        });
+      }
+    } catch (err) {
+      console.error("[ONBOARDING] Plan regeneration fetch error:", err);
     }
 
     showToast("Metrics Calculated!", `Daily target set: ${targetCalories} kcal & ${proteinGrams}g protein`, "success");

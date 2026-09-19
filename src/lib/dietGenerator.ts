@@ -240,6 +240,42 @@ const DINNER_OPTIONS: MealOption[] = [
   },
 ];
 
+const POST_WORKOUT_OPTIONS: MealOption[] = [
+  {
+    name: "Post-Workout Whey & Banana Shake",
+    items: ["Whey Protein (1 Scoop)", "Skimmed Milk (250ml)", "Banana (1 Large)", "Honey (1 tsp)"],
+    quantity: "1 Shaker Bottle (400ml)",
+    calories: 320,
+    proteinGrams: 30,
+    carbsGrams: 42,
+    fatsGrams: 4,
+    costInr: 50,
+    tags: ["VEG", "EGG", "NON_VEG"],
+  },
+  {
+    name: "Post-Workout Egg Whites & Fruit Bowl",
+    items: ["Boiled Egg Whites (4)", "Fresh Papaya or Watermelon (150g)"],
+    quantity: "4 Egg Whites + Fruit",
+    calories: 220,
+    proteinGrams: 24,
+    carbsGrams: 22,
+    fatsGrams: 1,
+    costInr: 30,
+    tags: ["EGG", "NON_VEG"],
+  },
+  {
+    name: "Post-Workout Paneer / Tofu & Sprouts Bowl",
+    items: ["Low-fat Paneer / Tofu (100g)", "Steamed Moong Sprouts (80g)", "Lemon Juice"],
+    quantity: "1 Bowl",
+    calories: 280,
+    proteinGrams: 22,
+    carbsGrams: 26,
+    fatsGrams: 10,
+    costInr: 40,
+    tags: ["VEG", "EGG", "NON_VEG"],
+  },
+];
+
 function filterOptions(options: MealOption[], pref: FoodPreference): MealOption[] {
   return options.filter((opt) => {
     if (pref === "Vegetarian") {
@@ -314,64 +350,48 @@ export function generateDietPlan(
     const lu = selectMeal(LUNCH_OPTIONS, foodPreference, i);
     const es = selectMeal(EVENING_SNACK_OPTIONS, foodPreference, i);
     const dn = selectMeal(DINNER_OPTIONS, foodPreference, i);
+    const pw = selectMeal(POST_WORKOUT_OPTIONS, foodPreference, i);
 
-    const meals: DietMealItem[] = [
-      {
-        mealType: "Breakfast",
-        name: bf.name,
-        items: bf.items,
-        quantity: bf.quantity,
-        calories: bf.calories,
-        proteinGrams: bf.proteinGrams,
-        carbsGrams: bf.carbsGrams,
-        fatsGrams: bf.fatsGrams,
-        approxCostInr: bf.costInr,
-      },
-      {
-        mealType: "Mid-Morning Snack",
-        name: mm.name,
-        items: mm.items,
-        quantity: mm.quantity,
-        calories: mm.calories,
-        proteinGrams: mm.proteinGrams,
-        carbsGrams: mm.carbsGrams,
-        fatsGrams: mm.fatsGrams,
-        approxCostInr: mm.costInr,
-      },
-      {
-        mealType: "Lunch",
-        name: lu.name,
-        items: lu.items,
-        quantity: lu.quantity,
-        calories: lu.calories,
-        proteinGrams: lu.proteinGrams,
-        carbsGrams: lu.carbsGrams,
-        fatsGrams: lu.fatsGrams,
-        approxCostInr: lu.costInr,
-      },
-      {
-        mealType: "Evening Snack",
-        name: es.name,
-        items: es.items,
-        quantity: es.quantity,
-        calories: es.calories,
-        proteinGrams: es.proteinGrams,
-        carbsGrams: es.carbsGrams,
-        fatsGrams: es.fatsGrams,
-        approxCostInr: es.costInr,
-      },
-      {
-        mealType: "Dinner",
-        name: dn.name,
-        items: dn.items,
-        quantity: dn.quantity,
-        calories: dn.calories,
-        proteinGrams: dn.proteinGrams,
-        carbsGrams: dn.carbsGrams,
-        fatsGrams: dn.fatsGrams,
-        approxCostInr: dn.costInr,
-      },
+    const unscaledMeals = [
+      { mealType: "Breakfast" as const, option: bf },
+      { mealType: "Mid-Morning Snack" as const, option: mm },
+      { mealType: "Lunch" as const, option: lu },
+      { mealType: "Evening Snack" as const, option: es },
+      { mealType: "Dinner" as const, option: dn },
+      { mealType: "Post-Workout Meal/Snack" as const, option: pw },
     ];
+
+    const unscaledTotalCals = unscaledMeals.reduce((sum, m) => sum + m.option.calories, 0);
+    const scaleFactor = Math.min(Math.max(dailyCalorieTarget / unscaledTotalCals, 0.7), 1.6);
+
+    const meals: DietMealItem[] = unscaledMeals.map(({ mealType, option }) => {
+      const scaledCals = Math.round(option.calories * scaleFactor);
+      const scaledProt = Math.round(option.proteinGrams * scaleFactor);
+      const scaledCarbs = Math.round(option.carbsGrams * scaleFactor);
+      const scaledFats = Math.round(option.fatsGrams * scaleFactor);
+      const scaledCost = Math.round(option.costInr * scaleFactor);
+
+      // Scale item portions text if numeric values present
+      const scaledItems = option.items.map((item) => {
+        return item.replace(/(\d+)\s*(g|ml|tbsp|tsp|Slices|Eggs?)/gi, (_, numStr, unit) => {
+          const num = parseInt(numStr, 10);
+          const scaledNum = Math.round(num * scaleFactor);
+          return `${scaledNum}${unit}`;
+        });
+      });
+
+      return {
+        mealType: mealType as any,
+        name: option.name,
+        items: scaledItems,
+        quantity: `${option.quantity} (Scaled ${Math.round(scaleFactor * 100)}%)`,
+        calories: scaledCals,
+        proteinGrams: scaledProt,
+        carbsGrams: scaledCarbs,
+        fatsGrams: scaledFats,
+        approxCostInr: scaledCost,
+      };
+    });
 
     const totalCals = meals.reduce((sum, m) => sum + m.calories, 0);
     const totalProt = meals.reduce((sum, m) => sum + m.proteinGrams, 0);
@@ -419,3 +439,4 @@ export function generateDietPlan(
     generatedAt: new Date().toISOString(),
   };
 }
+

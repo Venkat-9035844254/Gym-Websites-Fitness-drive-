@@ -15,54 +15,102 @@ export interface WorkoutBiometricsAndPreferences {
   workoutExperience?: string;
   equipment?: string;
   workoutType?: string;
+  limitations?: string | string[];
+  activityLevel?: string;
 }
 
 function findExercises(
   categoryKeywords: string[],
   count: number,
   usedIds: Set<string>,
-  goal: string = "Muscle Gain"
+  params: WorkoutBiometricsAndPreferences = {}
 ): WorkoutExercisePlanItem[] {
+  const goal = params.fitnessGoal || params.dietGoal || "Muscle Gain";
+  const experience = (params.workoutExperience || "Intermediate").toLowerCase();
+  const equipmentPref = (params.equipment || "Full Gym").toLowerCase();
+  const limitationsStr = (
+    Array.isArray(params.limitations)
+      ? params.limitations.join(" ")
+      : params.limitations || ""
+  ).toLowerCase();
+
   const matches = INITIAL_EXERCISES.filter((ex) => {
     const mg = (ex.muscleGroup || "").toLowerCase();
     const pb = (ex.primaryBodyPart || "").toLowerCase();
     const nm = (ex.name || "").toLowerCase();
+    const eq = (ex.equipment || "").toLowerCase();
 
-    return categoryKeywords.some(
+    // 1. Muscle / Body part keyword match
+    const categoryMatch = categoryKeywords.some(
       (kw) => mg.includes(kw) || pb.includes(kw) || nm.includes(kw)
     );
+
+    if (!categoryMatch) return false;
+
+    // 2. Equipment filter
+    if (equipmentPref.includes("bodyweight") || equipmentPref.includes("home")) {
+      if (!eq.includes("bodyweight") && !eq.includes("dumbbell")) return false;
+    } else if (equipmentPref.includes("dumbbell")) {
+      if (!eq.includes("dumbbell") && !eq.includes("bodyweight")) return false;
+    }
+
+    // 3. Limitations filter (e.g. knee, shoulder, back)
+    if (limitationsStr.includes("knee") && (nm.includes("squat") || nm.includes("lunge"))) {
+      return false;
+    }
+    if (limitationsStr.includes("shoulder") && nm.includes("overhead")) {
+      return false;
+    }
+    if (limitationsStr.includes("back") && (nm.includes("deadlift") || nm.includes("row"))) {
+      return false;
+    }
+
+    return true;
   });
 
-  // Filter out already used ones if possible
+  // Fallback if filter is too restrictive
   let available = matches.filter((m) => !usedIds.has(m.id));
   if (available.length < count) {
-    available = matches; // fallback to reuse if pool is small
+    const fallbackMatches = INITIAL_EXERCISES.filter((ex) => {
+      const mg = (ex.muscleGroup || "").toLowerCase();
+      const pb = (ex.primaryBodyPart || "").toLowerCase();
+      const nm = (ex.name || "").toLowerCase();
+      return categoryKeywords.some(
+        (kw) => mg.includes(kw) || pb.includes(kw) || nm.includes(kw)
+      );
+    });
+    available = fallbackMatches.length > 0 ? fallbackMatches : INITIAL_EXERCISES;
   }
 
   const selected = available.slice(0, count);
 
-  // Determine dynamic sets, reps, rest time based on fitness goal
-  let defaultSets = 4;
+  // Dynamic sets, reps, rest time based on experience & goal
+  let defaultSets = experience.includes("beginner") ? 3 : experience.includes("advanced") ? 5 : 4;
   let defaultReps = "8-12";
   let defaultRest = 60;
-  let defaultInstructionPrefix = "Maintain strict posture, peak contraction, and controlled eccentric control.";
+  let defaultInstructionPrefix = "Maintain strict posture, peak contraction, and controlled eccentric movement.";
 
   const normalizedGoal = goal.toLowerCase();
   if (normalizedGoal.includes("loss") || normalizedGoal.includes("fat") || normalizedGoal.includes("hiit")) {
-    defaultSets = 4;
+    defaultSets = experience.includes("beginner") ? 3 : 4;
     defaultReps = "12-15";
     defaultRest = 45;
     defaultInstructionPrefix = "High-tempo execution with minimal rest to maximize calorie burn and metabolic response.";
   } else if (normalizedGoal.includes("strength") || normalizedGoal.includes("power")) {
-    defaultSets = 5;
+    defaultSets = experience.includes("beginner") ? 3 : 5;
     defaultReps = "5-8";
     defaultRest = 90;
-    defaultInstructionPrefix = "Heavy compound execution. Rest fully between sets and push heavy weight with explosive power.";
+    defaultInstructionPrefix = "Heavy compound execution. Rest fully between sets and push weight with explosive control.";
   } else if (normalizedGoal.includes("endurance") || normalizedGoal.includes("fitness")) {
     defaultSets = 3;
     defaultReps = "12-15";
     defaultRest = 45;
-    defaultInstructionPrefix = "Focus on aerobic conditioning, continuous tension, and high stamina output.";
+    defaultInstructionPrefix = "Focus on aerobic conditioning, continuous muscular tension, and high stamina output.";
+  }
+
+  // Adjust for limitations if specified
+  if (limitationsStr.trim()) {
+    defaultInstructionPrefix += ` Note: Tailored for safety given notes: "${params.limitations}".`;
   }
 
   return selected.map((ex) => {
@@ -100,18 +148,19 @@ export function generateWorkoutPlan(
   const days: WorkoutDayPlan[] = [];
   const daysCount = [3, 4, 5, 6].includes(workoutDaysCount) ? workoutDaysCount : 4;
   const goal = params.fitnessGoal || params.dietGoal || "Muscle Gain";
+  const equipment = params.equipment ? ` (${params.equipment})` : "";
   let splitTitle = "";
 
   if (daysCount === 6) {
-    splitTitle = `6-Day Push/Pull/Legs ${goal} Split`;
+    splitTitle = `6-Day Push/Pull/Legs ${goal} Split${equipment}`;
     const usedMon = new Set<string>();
     const usedTue = new Set<string>();
     const usedWed = new Set<string>();
 
     // Mon: Chest 4 + Triceps 4 = 8
     const monExercises = [
-      ...findExercises(["chest"], 4, usedMon, goal),
-      ...findExercises(["tricep", "arm"], 4, usedMon, goal),
+      ...findExercises(["chest"], 4, usedMon, params),
+      ...findExercises(["tricep", "arm"], 4, usedMon, params),
     ];
     days.push({
       dayName: "Monday",
@@ -124,8 +173,8 @@ export function generateWorkoutPlan(
 
     // Tue: Back 4 + Biceps 4 = 8
     const tueExercises = [
-      ...findExercises(["back", "lats"], 4, usedTue, goal),
-      ...findExercises(["bicep", "arm"], 4, usedTue, goal),
+      ...findExercises(["back", "lats"], 4, usedTue, params),
+      ...findExercises(["bicep", "arm"], 4, usedTue, params),
     ];
     days.push({
       dayName: "Tuesday",
@@ -138,9 +187,9 @@ export function generateWorkoutPlan(
 
     // Wed: Legs 3 + Shoulders 3 + Abs 3 = 9
     const wedExercises = [
-      ...findExercises(["leg", "quad", "hamstring", "calf"], 3, usedWed, goal),
-      ...findExercises(["shoulder", "deltoid"], 3, usedWed, goal),
-      ...findExercises(["ab", "core"], 3, usedWed, goal),
+      ...findExercises(["leg", "quad", "hamstring", "calf"], 3, usedWed, params),
+      ...findExercises(["shoulder", "deltoid"], 3, usedWed, params),
+      ...findExercises(["ab", "core"], 3, usedWed, params),
     ];
     days.push({
       dayName: "Wednesday",
@@ -153,8 +202,8 @@ export function generateWorkoutPlan(
 
     // Thu: Chest 4 + Triceps 4 = 8
     const thuExercises = [
-      ...findExercises(["chest"], 4, new Set(), goal),
-      ...findExercises(["tricep", "arm"], 4, new Set(), goal),
+      ...findExercises(["chest"], 4, new Set(), params),
+      ...findExercises(["tricep", "arm"], 4, new Set(), params),
     ];
     days.push({
       dayName: "Thursday",
@@ -167,8 +216,8 @@ export function generateWorkoutPlan(
 
     // Fri: Back 4 + Biceps 4 = 8
     const friExercises = [
-      ...findExercises(["back", "lats"], 4, new Set(), goal),
-      ...findExercises(["bicep", "arm"], 4, new Set(), goal),
+      ...findExercises(["back", "lats"], 4, new Set(), params),
+      ...findExercises(["bicep", "arm"], 4, new Set(), params),
     ];
     days.push({
       dayName: "Friday",
@@ -181,9 +230,9 @@ export function generateWorkoutPlan(
 
     // Sat: Legs 3 + Shoulders 3 + Abs 3 = 9
     const satExercises = [
-      ...findExercises(["leg", "quad", "hamstring", "calf"], 3, new Set(), goal),
-      ...findExercises(["shoulder", "deltoid"], 3, new Set(), goal),
-      ...findExercises(["ab", "core"], 3, new Set(), goal),
+      ...findExercises(["leg", "quad", "hamstring", "calf"], 3, new Set(), params),
+      ...findExercises(["shoulder", "deltoid"], 3, new Set(), params),
+      ...findExercises(["ab", "core"], 3, new Set(), params),
     ];
     days.push({
       dayName: "Saturday",
@@ -204,7 +253,7 @@ export function generateWorkoutPlan(
       isRestDay: true,
     });
   } else if (daysCount === 5) {
-    splitTitle = `5-Day Advanced ${goal} Split`;
+    splitTitle = `5-Day Advanced ${goal} Split${equipment}`;
     const usedMon = new Set<string>();
 
     days.push({
@@ -213,8 +262,8 @@ export function generateWorkoutPlan(
       title: "Chest + Triceps Power",
       muscleGroups: ["Chest", "Triceps"],
       exercises: [
-        ...findExercises(["chest"], 4, usedMon, goal),
-        ...findExercises(["tricep", "arm"], 4, usedMon, goal),
+        ...findExercises(["chest"], 4, usedMon, params),
+        ...findExercises(["tricep", "arm"], 4, usedMon, params),
       ],
       isRestDay: false,
     });
@@ -226,8 +275,8 @@ export function generateWorkoutPlan(
       title: "Back + Biceps Thickness",
       muscleGroups: ["Back", "Biceps"],
       exercises: [
-        ...findExercises(["back", "lats"], 4, usedTue, goal),
-        ...findExercises(["bicep", "arm"], 4, usedTue, goal),
+        ...findExercises(["back", "lats"], 4, usedTue, params),
+        ...findExercises(["bicep", "arm"], 4, usedTue, params),
       ],
       isRestDay: false,
     });
@@ -239,9 +288,9 @@ export function generateWorkoutPlan(
       title: "Legs + Shoulders + Abs",
       muscleGroups: ["Legs", "Shoulders", "Abs"],
       exercises: [
-        ...findExercises(["leg", "quad", "hamstring"], 3, usedWed, goal),
-        ...findExercises(["shoulder", "deltoid"], 3, usedWed, goal),
-        ...findExercises(["ab", "core"], 3, usedWed, goal),
+        ...findExercises(["leg", "quad", "hamstring"], 3, usedWed, params),
+        ...findExercises(["shoulder", "deltoid"], 3, usedWed, params),
+        ...findExercises(["ab", "core"], 3, usedWed, params),
       ],
       isRestDay: false,
     });
@@ -253,9 +302,9 @@ export function generateWorkoutPlan(
       title: "Arms & Forearms Specialization",
       muscleGroups: ["Triceps", "Biceps", "Forearms"],
       exercises: [
-        ...findExercises(["tricep"], 3, usedThu, goal),
-        ...findExercises(["bicep"], 3, usedThu, goal),
-        ...findExercises(["arm", "forearm", "wrist"], 3, usedThu, goal),
+        ...findExercises(["tricep"], 3, usedThu, params),
+        ...findExercises(["bicep"], 3, usedThu, params),
+        ...findExercises(["arm", "forearm", "wrist"], 3, usedThu, params),
       ],
       isRestDay: false,
     });
@@ -267,10 +316,10 @@ export function generateWorkoutPlan(
       title: "Full Body Conditioning & Core",
       muscleGroups: ["Chest", "Back", "Core", "Full Body"],
       exercises: [
-        ...findExercises(["push", "chest"], 2, usedFri, goal),
-        ...findExercises(["pull", "back"], 2, usedFri, goal),
-        ...findExercises(["dip", "tricep", "arm"], 2, usedFri, goal),
-        ...findExercises(["core", "ab", "plank"], 2, usedFri, goal),
+        ...findExercises(["push", "chest"], 2, usedFri, params),
+        ...findExercises(["pull", "back"], 2, usedFri, params),
+        ...findExercises(["dip", "tricep", "arm"], 2, usedFri, params),
+        ...findExercises(["core", "ab", "plank"], 2, usedFri, params),
       ],
       isRestDay: false,
     });
@@ -292,7 +341,7 @@ export function generateWorkoutPlan(
       isRestDay: true,
     });
   } else if (daysCount === 4) {
-    splitTitle = `4-Day ${goal} Split`;
+    splitTitle = `4-Day ${goal} Split${equipment}`;
     const usedMon = new Set<string>();
 
     days.push({
@@ -301,8 +350,8 @@ export function generateWorkoutPlan(
       title: "Chest + Triceps Focus",
       muscleGroups: ["Chest", "Triceps"],
       exercises: [
-        ...findExercises(["chest"], 4, usedMon, goal),
-        ...findExercises(["tricep", "arm"], 4, usedMon, goal),
+        ...findExercises(["chest"], 4, usedMon, params),
+        ...findExercises(["tricep", "arm"], 4, usedMon, params),
       ],
       isRestDay: false,
     });
@@ -314,8 +363,8 @@ export function generateWorkoutPlan(
       title: "Back + Biceps Focus",
       muscleGroups: ["Back", "Biceps"],
       exercises: [
-        ...findExercises(["back", "lats"], 4, usedTue, goal),
-        ...findExercises(["bicep", "arm"], 4, usedTue, goal),
+        ...findExercises(["back", "lats"], 4, usedTue, params),
+        ...findExercises(["bicep", "arm"], 4, usedTue, params),
       ],
       isRestDay: false,
     });
@@ -336,9 +385,9 @@ export function generateWorkoutPlan(
       title: "Legs + Shoulders + Abs",
       muscleGroups: ["Legs", "Shoulders", "Abs"],
       exercises: [
-        ...findExercises(["leg", "quad", "hamstring"], 3, usedThu, goal),
-        ...findExercises(["shoulder", "deltoid"], 3, usedThu, goal),
-        ...findExercises(["ab", "core"], 3, usedThu, goal),
+        ...findExercises(["leg", "quad", "hamstring"], 3, usedThu, params),
+        ...findExercises(["shoulder", "deltoid"], 3, usedThu, params),
+        ...findExercises(["ab", "core"], 3, usedThu, params),
       ],
       isRestDay: false,
     });
@@ -350,9 +399,9 @@ export function generateWorkoutPlan(
       title: "Arms & Core Conditioning",
       muscleGroups: ["Triceps", "Biceps", "Abs"],
       exercises: [
-        ...findExercises(["tricep"], 3, usedFri, goal),
-        ...findExercises(["bicep"], 3, usedFri, goal),
-        ...findExercises(["ab", "core"], 3, usedFri, goal),
+        ...findExercises(["tricep"], 3, usedFri, params),
+        ...findExercises(["bicep"], 3, usedFri, params),
+        ...findExercises(["ab", "core"], 3, usedFri, params),
       ],
       isRestDay: false,
     });
@@ -375,7 +424,7 @@ export function generateWorkoutPlan(
     });
   } else {
     // 3 Days Split
-    splitTitle = `3-Day ${goal} Foundation Split`;
+    splitTitle = `3-Day ${goal} Foundation Split${equipment}`;
 
     const usedMon = new Set<string>();
     days.push({
@@ -384,8 +433,8 @@ export function generateWorkoutPlan(
       title: "Chest + Triceps Routine",
       muscleGroups: ["Chest", "Triceps"],
       exercises: [
-        ...findExercises(["chest"], 4, usedMon, goal),
-        ...findExercises(["tricep", "arm"], 4, usedMon, goal),
+        ...findExercises(["chest"], 4, usedMon, params),
+        ...findExercises(["tricep", "arm"], 4, usedMon, params),
       ],
       isRestDay: false,
     });
@@ -406,8 +455,8 @@ export function generateWorkoutPlan(
       title: "Back + Biceps Routine",
       muscleGroups: ["Back", "Biceps"],
       exercises: [
-        ...findExercises(["back", "lats"], 4, usedWed, goal),
-        ...findExercises(["bicep", "arm"], 4, usedWed, goal),
+        ...findExercises(["back", "lats"], 4, usedWed, params),
+        ...findExercises(["bicep", "arm"], 4, usedWed, params),
       ],
       isRestDay: false,
     });
@@ -428,9 +477,9 @@ export function generateWorkoutPlan(
       title: "Legs + Shoulders + Abs",
       muscleGroups: ["Legs", "Shoulders", "Abs"],
       exercises: [
-        ...findExercises(["leg", "quad", "hamstring"], 3, usedFri, goal),
-        ...findExercises(["shoulder", "deltoid"], 3, usedFri, goal),
-        ...findExercises(["ab", "core"], 3, usedFri, goal),
+        ...findExercises(["leg", "quad", "hamstring"], 3, usedFri, params),
+        ...findExercises(["shoulder", "deltoid"], 3, usedFri, params),
+        ...findExercises(["ab", "core"], 3, usedFri, params),
       ],
       isRestDay: false,
     });
@@ -462,3 +511,4 @@ export function generateWorkoutPlan(
     generatedAt: new Date().toISOString(),
   };
 }
+
