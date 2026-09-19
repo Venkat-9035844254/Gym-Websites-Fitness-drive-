@@ -25,6 +25,10 @@ export function FitnessOnboardingModal({ onClose }: FitnessOnboardingModalProps)
   const [fitnessGoal, setFitnessGoal] = useState<"Weight Loss" | "Muscle Gain" | "Maintenance" | "Endurance">(
     (memberProfile?.fitnessGoal as any) || "Weight Loss"
   );
+  const [foodPreference, setFoodPreference] = useState<"Vegetarian" | "Vegetarian + Eggs" | "Non-Vegetarian">(
+    (memberProfile?.foodPreference as any) || "Vegetarian"
+  );
+  const [workoutDays, setWorkoutDays] = useState<number>(memberProfile?.workoutDays || 4);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -128,6 +132,8 @@ export function FitnessOnboardingModal({ onClose }: FitnessOnboardingModalProps)
       gender: gender,
       activityLevel: activityLevel,
       fitnessGoal: fitnessGoal,
+      foodPreference: foodPreference,
+      workoutDays: workoutDays,
       dailyCalorieTarget: targetCalories,
       proteinGramsTarget: proteinGrams,
       carbsGramsTarget: carbGrams,
@@ -161,8 +167,8 @@ export function FitnessOnboardingModal({ onClose }: FitnessOnboardingModalProps)
             gender,
             heightCm: heightCmNum,
             weightKg: weightKgNum,
-            workoutDays: memberProfile?.workoutDays || 4,
-            foodPreference: memberProfile?.foodPreference || "Non-Vegetarian",
+            workoutDays: workoutDays,
+            foodPreference: foodPreference,
             dietGoal: fitnessGoal,
             dietBudget: memberProfile?.dietBudget || 7000,
             dietBudgetPeriod: memberProfile?.dietBudgetPeriod || "MONTHLY",
@@ -318,6 +324,40 @@ export function FitnessOnboardingModal({ onClose }: FitnessOnboardingModalProps)
                 <option value="Muscle Gain">Muscle Gain (+350 kcal surplus)</option>
                 <option value="Maintenance">Maintain Weight & Recomp</option>
                 <option value="Endurance">Athletic Endurance & Stamina</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Food Preference & Workout Frequency Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block font-extrabold text-slate-300 uppercase tracking-wider text-[10px] mb-1.5">
+                Dietary / Food Preference *
+              </label>
+              <select
+                value={foodPreference}
+                onChange={(e) => setFoodPreference(e.target.value as any)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-cyan-400"
+              >
+                <option value="Vegetarian">Pure Vegetarian (No Meat/Egg)</option>
+                <option value="Vegetarian + Eggs">Vegetarian + Eggs (Eggetarian)</option>
+                <option value="Non-Vegetarian">Non-Vegetarian (Chicken/Fish/Eggs)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-extrabold text-slate-300 uppercase tracking-wider text-[10px] mb-1.5">
+                Workout Days per Week *
+              </label>
+              <select
+                value={workoutDays}
+                onChange={(e) => setWorkoutDays(parseInt(e.target.value, 10))}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-cyan-400"
+              >
+                <option value={3}>3 Days / Week (Full Body Split)</option>
+                <option value={4}>4 Days / Week (Upper/Lower Split)</option>
+                <option value={5}>5 Days / Week (Push/Pull/Legs Split)</option>
+                <option value={6}>6 Days / Week (High Frequency PPL)</option>
               </select>
             </div>
           </div>

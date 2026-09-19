@@ -37,7 +37,7 @@ const BREAKFAST_OPTIONS: MealOption[] = [
     carbsGrams: 68,
     fatsGrams: 14,
     costInr: 35,
-    tags: ["VEG", "EGG", "NON_VEG"],
+    tags: ["VEG"],
   },
   {
     name: "High Protein Boiled Eggs & Whole Wheat Toast",
@@ -48,7 +48,7 @@ const BREAKFAST_OPTIONS: MealOption[] = [
     carbsGrams: 32,
     fatsGrams: 16,
     costInr: 32,
-    tags: ["EGG", "NON_VEG"],
+    tags: ["EGG"],
   },
   {
     name: "Paneer & Vegetable Stuffed Paratha",
@@ -59,7 +59,7 @@ const BREAKFAST_OPTIONS: MealOption[] = [
     carbsGrams: 58,
     fatsGrams: 20,
     costInr: 45,
-    tags: ["VEG", "EGG", "NON_VEG"],
+    tags: ["VEG"],
   },
   {
     name: "South Indian Idli & Sambhar Protein Bowl",
@@ -70,7 +70,7 @@ const BREAKFAST_OPTIONS: MealOption[] = [
     carbsGrams: 72,
     fatsGrams: 6,
     costInr: 30,
-    tags: ["VEG", "EGG", "NON_VEG"],
+    tags: ["VEG"],
   },
 ];
 
@@ -84,7 +84,7 @@ const MID_MORNING_OPTIONS: MealOption[] = [
     carbsGrams: 38,
     fatsGrams: 3,
     costInr: 18,
-    tags: ["VEG", "EGG", "NON_VEG"],
+    tags: ["VEG"],
   },
   {
     name: "Egg White Bhurji Snack",
@@ -95,7 +95,7 @@ const MID_MORNING_OPTIONS: MealOption[] = [
     carbsGrams: 15,
     fatsGrams: 2,
     costInr: 22,
-    tags: ["EGG", "NON_VEG"],
+    tags: ["EGG"],
   },
   {
     name: "Greek Yogurt & Almond Bowl",
@@ -106,7 +106,7 @@ const MID_MORNING_OPTIONS: MealOption[] = [
     carbsGrams: 22,
     fatsGrams: 8,
     costInr: 30,
-    tags: ["VEG", "EGG", "NON_VEG"],
+    tags: ["VEG"],
   },
 ];
 
@@ -131,7 +131,7 @@ const LUNCH_OPTIONS: MealOption[] = [
     carbsGrams: 82,
     fatsGrams: 9,
     costInr: 35,
-    tags: ["VEG", "EGG", "NON_VEG"],
+    tags: ["VEG"],
   },
   {
     name: "Egg Curry & Chapati Meal",
@@ -142,7 +142,7 @@ const LUNCH_OPTIONS: MealOption[] = [
     carbsGrams: 64,
     fatsGrams: 18,
     costInr: 40,
-    tags: ["EGG", "NON_VEG"],
+    tags: ["EGG"],
   },
   {
     name: "Desi Paneer Bhurji & Multigrain Roti",
@@ -153,7 +153,7 @@ const LUNCH_OPTIONS: MealOption[] = [
     carbsGrams: 68,
     fatsGrams: 22,
     costInr: 60,
-    tags: ["VEG", "EGG", "NON_VEG"],
+    tags: ["VEG"],
   },
 ];
 
@@ -167,7 +167,7 @@ const EVENING_SNACK_OPTIONS: MealOption[] = [
     carbsGrams: 32,
     fatsGrams: 9,
     costInr: 20,
-    tags: ["VEG", "EGG", "NON_VEG"],
+    tags: ["VEG"],
   },
   {
     name: "Whey Protein Shake / Buttermilk Bowl",
@@ -178,7 +178,7 @@ const EVENING_SNACK_OPTIONS: MealOption[] = [
     carbsGrams: 28,
     fatsGrams: 3,
     costInr: 45,
-    tags: ["VEG", "EGG", "NON_VEG"],
+    tags: ["VEG"],
   },
   {
     name: "Omelette Roll",
@@ -189,7 +189,7 @@ const EVENING_SNACK_OPTIONS: MealOption[] = [
     carbsGrams: 28,
     fatsGrams: 12,
     costInr: 25,
-    tags: ["EGG", "NON_VEG"],
+    tags: ["EGG"],
   },
 ];
 
@@ -214,7 +214,7 @@ const DINNER_OPTIONS: MealOption[] = [
     carbsGrams: 88,
     fatsGrams: 8,
     costInr: 32,
-    tags: ["VEG", "EGG", "NON_VEG"],
+    tags: ["VEG"],
   },
   {
     name: "Tofu / Paneer Tikka & Roti",
@@ -225,7 +225,7 @@ const DINNER_OPTIONS: MealOption[] = [
     carbsGrams: 48,
     fatsGrams: 18,
     costInr: 55,
-    tags: ["VEG", "EGG", "NON_VEG"],
+    tags: ["VEG"],
   },
   {
     name: "Chicken Soup & Boiled Egg Plate",
@@ -250,7 +250,7 @@ const POST_WORKOUT_OPTIONS: MealOption[] = [
     carbsGrams: 42,
     fatsGrams: 4,
     costInr: 50,
-    tags: ["VEG", "EGG", "NON_VEG"],
+    tags: ["VEG"],
   },
   {
     name: "Post-Workout Egg Whites & Fruit Bowl",
@@ -261,7 +261,7 @@ const POST_WORKOUT_OPTIONS: MealOption[] = [
     carbsGrams: 22,
     fatsGrams: 1,
     costInr: 30,
-    tags: ["EGG", "NON_VEG"],
+    tags: ["EGG"],
   },
   {
     name: "Post-Workout Paneer / Tofu & Sprouts Bowl",
@@ -272,25 +272,36 @@ const POST_WORKOUT_OPTIONS: MealOption[] = [
     carbsGrams: 26,
     fatsGrams: 10,
     costInr: 40,
-    tags: ["VEG", "EGG", "NON_VEG"],
+    tags: ["VEG"],
   },
 ];
 
-function filterOptions(options: MealOption[], pref: FoodPreference): MealOption[] {
-  return options.filter((opt) => {
-    if (pref === "Vegetarian") {
-      return opt.tags.includes("VEG");
-    } else if (pref === "Vegetarian + Eggs") {
-      return opt.tags.includes("VEG") || opt.tags.includes("EGG");
-    } else {
-      return true; // Non-Vegetarian accepts all
-    }
-  });
+function filterOptions(options: MealOption[], pref: FoodPreference | string): MealOption[] {
+  const norm = (pref || "").toString().toLowerCase().trim();
+
+  let allowed: MealOption[] = [];
+
+  if (norm === "vegetarian" || norm === "veg") {
+    allowed = options.filter((opt) => opt.tags.includes("VEG"));
+  } else if (norm === "vegetarian + eggs" || norm.includes("egg") || norm === "eggetarian") {
+    allowed = options.filter((opt) => opt.tags.includes("VEG") || opt.tags.includes("EGG"));
+  } else {
+    // Non-Vegetarian accepts all options
+    allowed = options;
+  }
+
+  if (allowed.length > 0) {
+    return allowed;
+  }
+
+  // Safe fallback if allowed is empty
+  const vegFallback = options.filter((opt) => opt.tags.includes("VEG"));
+  return vegFallback.length > 0 ? vegFallback : options;
 }
 
 function selectMeal(
   options: MealOption[],
-  pref: FoodPreference,
+  pref: FoodPreference | string,
   dayIndex: number
 ): MealOption {
   const allowed = filterOptions(options, pref);
