@@ -91,63 +91,21 @@ export async function POST(req: Request) {
     workoutPlan.userId = newUserId;
     dietPlan.userId = newUserId;
 
-    let user: any = null;
-    let memberProfile: any = null;
+    console.log(`[AUTH] Checking existing user in database for email: ${normalizedEmail}`);
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
 
-    try {
-      console.log(`[AUTH] Checking existing user in database for email: ${normalizedEmail}`);
-      const existingUser = await prisma.user.findUnique({
-        where: { email: normalizedEmail },
-      });
+    if (existingUser) {
+      console.log(`[AUTH] Registration failed: Email ${normalizedEmail} already exists`);
+      return NextResponse.json(
+        { success: false, message: "An account with this email address already exists. Please log in instead." },
+        { status: 400 }
+      );
+    }
 
-      if (existingUser) {
-        console.log(`[AUTH] Registration failed: Email ${normalizedEmail} already exists`);
-        return NextResponse.json(
-          { success: false, message: "An account with this email address already exists." },
-          { status: 400 }
-        );
-      }
-
-      user = await prisma.user.create({
-        data: {
-          id: newUserId,
-          email: normalizedEmail,
-          passwordHash,
-          name: name.trim(),
-          phone: phone ? phone.trim() : null,
-          role: assignedRole,
-          avatar: avatarUrl,
-          memberProfile:
-            assignedRole === "MEMBER"
-              ? {
-                  create: {
-                    id: newMemberProfileId,
-                    qrCode: qrCodeVal,
-                    membershipStatus: "ACTIVE",
-                    age: parsedAge,
-                    gender: gender || "Male",
-                    heightCm: parsedHeight,
-                    weightKg: parsedWeight,
-                    workoutDays: parsedDays,
-                    foodPreference: parsedFoodPref,
-                    dietGoal: parsedDietGoal,
-                    dietBudget: parsedBudget,
-                    dietBudgetPeriod: parsedBudgetPeriod,
-                    workoutPlanJson: JSON.stringify(workoutPlan),
-                    dietPlanJson: JSON.stringify(dietPlan),
-                  },
-                }
-              : undefined,
-        },
-        include: {
-          memberProfile: true,
-          trainerProfile: true,
-        },
-      });
-      memberProfile = user?.memberProfile || null;
-    } catch (dbErr: any) {
-      console.warn("[AUTH] Database query/write warning (Vercel serverless fallback):", dbErr?.message || dbErr);
-      user = {
+    const user = await prisma.user.create({
+      data: {
         id: newUserId,
         email: normalizedEmail,
         passwordHash,
@@ -155,29 +113,35 @@ export async function POST(req: Request) {
         phone: phone ? phone.trim() : null,
         role: assignedRole,
         avatar: avatarUrl,
-        createdAt: new Date(),
-      };
+        memberProfile:
+          assignedRole === "MEMBER"
+            ? {
+                create: {
+                  id: newMemberProfileId,
+                  qrCode: qrCodeVal,
+                  membershipStatus: "ACTIVE",
+                  age: parsedAge,
+                  gender: gender || "Male",
+                  heightCm: parsedHeight,
+                  weightKg: parsedWeight,
+                  workoutDays: parsedDays,
+                  foodPreference: parsedFoodPref,
+                  dietGoal: parsedDietGoal,
+                  dietBudget: parsedBudget,
+                  dietBudgetPeriod: parsedBudgetPeriod,
+                  workoutPlanJson: JSON.stringify(workoutPlan),
+                  dietPlanJson: JSON.stringify(dietPlan),
+                },
+              }
+            : undefined,
+      },
+      include: {
+        memberProfile: true,
+        trainerProfile: true,
+      },
+    });
 
-      if (assignedRole === "MEMBER") {
-        memberProfile = {
-          id: newMemberProfileId,
-          userId: newUserId,
-          qrCode: qrCodeVal,
-          membershipStatus: "ACTIVE",
-          age: parsedAge,
-          gender: gender || "Male",
-          heightCm: parsedHeight,
-          weightKg: parsedWeight,
-          workoutDays: parsedDays,
-          foodPreference: parsedFoodPref,
-          dietGoal: parsedDietGoal,
-          dietBudget: parsedBudget,
-          dietBudgetPeriod: parsedBudgetPeriod,
-          workoutPlanJson: JSON.stringify(workoutPlan),
-          dietPlanJson: JSON.stringify(dietPlan),
-        };
-      }
-    }
+    const memberProfile = user?.memberProfile || null;
 
     // Generate JWT token
     const token = jwt.sign(

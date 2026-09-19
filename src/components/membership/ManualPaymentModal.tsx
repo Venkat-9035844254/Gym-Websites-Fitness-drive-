@@ -76,6 +76,10 @@ export function ManualPaymentModal({
 
   const handleSubmitVerification = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      setErrorMsg("Your session has expired. Please log in again to submit payment verification.");
+      return;
+    }
     if (!transactionRef.trim()) {
       setErrorMsg("Please enter your payment Transaction ID / UTR reference number.");
       return;

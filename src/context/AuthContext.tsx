@@ -159,42 +159,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: true, user: authenticatedUser };
       }
 
-      // Fallback check against browser local storage (for Vercel serverless ephemeral SQLite environments)
-      const storedUsers = getStoredUsers();
-      const localUser = storedUsers.find((u) => u.email.trim().toLowerCase() === email.trim().toLowerCase());
-
-      if (localUser) {
-        if (localUser.password && password && localUser.password !== password) {
-          return { success: false, message: "Incorrect password. Please try again." };
-        }
-        setUser(localUser);
-        localStorage.setItem("apex_active_user", JSON.stringify(localUser));
-        loadProfilesForUser(localUser);
-        return { success: true, user: localUser };
-      }
-
       return {
         success: false,
         message: data.message || "No registered account found with that email address.",
       };
     } catch (err: any) {
       console.error("[AUTH] Login network error:", err);
-      // Fallback local check if API endpoint unavailable
-      const users = getStoredUsers();
-      const foundUser = users.find((u) => u.email.trim().toLowerCase() === email.trim().toLowerCase());
-
-      if (!foundUser) {
-        return { success: false, message: "No registered account found with that email address." };
-      }
-
-      if (foundUser.password && password && foundUser.password !== password) {
-        return { success: false, message: "Incorrect password. Please try again." };
-      }
-
-      setUser(foundUser);
-      localStorage.setItem("apex_active_user", JSON.stringify(foundUser));
-      loadProfilesForUser(foundUser);
-      return { success: true, user: foundUser };
+      return {
+        success: false,
+        message: err?.message || "Unable to connect to the server. Please check your internet connection.",
+      };
     }
   };
 

@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const authUser = await getAuthUser(req);
     if (!authUser) {
       return NextResponse.json(
-        { success: false, message: "Authentication required", code: "UNAUTHORIZED" },
+        { success: false, message: "Your session has expired. Please log in again.", code: "UNAUTHORIZED" },
         { status: 401 }
       );
     }
@@ -191,7 +191,7 @@ export async function GET(req: Request) {
     const authUser = await getAuthUser(req);
     if (!authUser) {
       return NextResponse.json(
-        { success: false, message: "Authentication required", code: "UNAUTHORIZED" },
+        { success: false, message: "Your session has expired. Please log in again.", code: "UNAUTHORIZED" },
         { status: 401 }
       );
     }

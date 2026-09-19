@@ -2,6 +2,58 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { GeneratedWorkoutPlan, GeneratedDietPlan, User, MemberProfile } from "@/types";
 
+export function savePdfFile(doc: jsPDF, filename: string) {
+  const safeFilename = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;
+
+  if (typeof window === "undefined") return;
+
+  const isCapacitor = (window as any).Capacitor?.isNativePlatform?.();
+
+  if (isCapacitor) {
+    try {
+      const dataUri = doc.output("datauristring");
+      const a = document.createElement("a");
+      a.href = dataUri;
+      a.download = safeFilename;
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        try {
+          document.body.removeChild(a);
+        } catch (e) {}
+      }, 2000);
+      return;
+    } catch (e) {
+      console.warn("Capacitor download fallback error:", e);
+    }
+  }
+
+  // Mobile Web / Chrome Android / Desktop safely delayed blob revocation
+  try {
+    const blob = doc.output("blob");
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = safeFilename;
+    link.setAttribute("target", "_blank");
+    link.setAttribute("rel", "noopener noreferrer");
+    document.body.appendChild(link);
+    link.click();
+
+    // Retain blobUrl for 60 seconds so native mobile Android Download Manager can finish stream reading
+    setTimeout(() => {
+      try {
+        document.body.removeChild(link);
+      } catch (e) {}
+      URL.revokeObjectURL(blobUrl);
+    }, 60000);
+  } catch (err) {
+    console.warn("Blob save fallback to doc.save:", err);
+    doc.save(safeFilename);
+  }
+}
+
 export function downloadWorkoutPlanPdf(user: User, memberProfile: MemberProfile | null, plan: GeneratedWorkoutPlan) {
   const doc = new jsPDF();
 
@@ -101,7 +153,7 @@ export function downloadWorkoutPlanPdf(user: User, memberProfile: MemberProfile 
     { maxWidth: 180 }
   );
 
-  doc.save(`Fitness_Drive_Workout_Plan_${user.name.replace(/\s+/g, "_")}.pdf`);
+  savePdfFile(doc, `Fitness_Drive_Workout_Plan_${user.name.replace(/\s+/g, "_")}.pdf`);
 }
 
 export function downloadDietPlanPdf(user: User, memberProfile: MemberProfile | null, plan: GeneratedDietPlan) {
@@ -195,7 +247,7 @@ export function downloadDietPlanPdf(user: User, memberProfile: MemberProfile | n
     { maxWidth: 180 }
   );
 
-  doc.save(`Fitness_Drive_Diet_Plan_${user.name.replace(/\s+/g, "_")}.pdf`);
+  savePdfFile(doc, `Fitness_Drive_Diet_Plan_${user.name.replace(/\s+/g, "_")}.pdf`);
 }
 
 export function downloadCombinedFitnessPlanPdf(
@@ -382,5 +434,5 @@ export function downloadCombinedFitnessPlanPdf(
     { maxWidth: 180 }
   );
 
-  doc.save(`Fitness_Drive_Complete_Plan_${user.name.replace(/\s+/g, "_")}.pdf`);
+  savePdfFile(doc, `Fitness_Drive_Complete_Plan_${user.name.replace(/\s+/g, "_")}.pdf`);
 }
