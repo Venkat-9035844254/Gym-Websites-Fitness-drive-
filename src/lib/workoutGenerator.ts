@@ -34,18 +34,35 @@ function findExercises(
       : params.limitations || ""
   ).toLowerCase();
 
+  const isTricepsSearch = categoryKeywords.some((k) => k.toLowerCase().includes("tricep"));
+  const isBicepsSearch = categoryKeywords.some((k) => k.toLowerCase().includes("bicep"));
+  const isForearmsSearch = categoryKeywords.some((k) => k.toLowerCase().includes("forearm") || k.toLowerCase().includes("wrist"));
+
   const matches = INITIAL_EXERCISES.filter((ex) => {
     const mg = (ex.muscleGroup || "").toLowerCase();
     const pb = (ex.primaryBodyPart || "").toLowerCase();
     const nm = (ex.name || "").toLowerCase();
     const eq = (ex.equipment || "").toLowerCase();
 
-    // 1. Muscle / Body part keyword match
-    const categoryMatch = categoryKeywords.some(
-      (kw) => mg.includes(kw) || pb.includes(kw) || nm.includes(kw)
-    );
-
-    if (!categoryMatch) return false;
+    // 1. Strict muscle group category matching (Prevent Triceps from showing Biceps or vice-versa)
+    if (isTricepsSearch) {
+      if (!pb.includes("triceps") && !nm.includes("tricep") && !nm.includes("skull") && !nm.includes("pushdown") && !nm.includes("dip")) {
+        return false;
+      }
+    } else if (isBicepsSearch) {
+      if (!pb.includes("biceps") && !nm.includes("bicep") && !nm.includes("curl")) {
+        return false;
+      }
+    } else if (isForearmsSearch) {
+      if (!pb.includes("forearms") && !nm.includes("wrist") && !nm.includes("reverse curl")) {
+        return false;
+      }
+    } else {
+      const categoryMatch = categoryKeywords.some(
+        (kw) => mg.includes(kw) || pb.includes(kw) || nm.includes(kw)
+      );
+      if (!categoryMatch) return false;
+    }
 
     // 2. Equipment filter
     if (equipmentPref.includes("bodyweight") || equipmentPref.includes("home")) {
@@ -68,18 +85,16 @@ function findExercises(
     return true;
   });
 
-  // Fallback if filter is too restrictive
+  // Fallback if filter is too restrictive: pick strictly from matching muscle group matches, NOT arbitrary INITIAL_EXERCISES
   let available = matches.filter((m) => !usedIds.has(m.id));
   if (available.length < count) {
-    const fallbackMatches = INITIAL_EXERCISES.filter((ex) => {
-      const mg = (ex.muscleGroup || "").toLowerCase();
+    available = matches.length > 0 ? matches : INITIAL_EXERCISES.filter((ex) => {
       const pb = (ex.primaryBodyPart || "").toLowerCase();
       const nm = (ex.name || "").toLowerCase();
-      return categoryKeywords.some(
-        (kw) => mg.includes(kw) || pb.includes(kw) || nm.includes(kw)
-      );
+      if (isTricepsSearch) return pb.includes("triceps") || nm.includes("tricep");
+      if (isBicepsSearch) return pb.includes("biceps") || nm.includes("bicep");
+      return true;
     });
-    available = fallbackMatches.length > 0 ? fallbackMatches : INITIAL_EXERCISES;
   }
 
   const selected = available.slice(0, count);
@@ -160,7 +175,7 @@ export function generateWorkoutPlan(
     // Mon: Chest 4 + Triceps 4 = 8
     const monExercises = [
       ...findExercises(["chest"], 4, usedMon, params),
-      ...findExercises(["tricep", "arm"], 4, usedMon, params),
+      ...findExercises(["tricep"], 4, usedMon, params),
     ];
     days.push({
       dayName: "Monday",
@@ -174,7 +189,7 @@ export function generateWorkoutPlan(
     // Tue: Back 4 + Biceps 4 = 8
     const tueExercises = [
       ...findExercises(["back", "lats"], 4, usedTue, params),
-      ...findExercises(["bicep", "arm"], 4, usedTue, params),
+      ...findExercises(["bicep"], 4, usedTue, params),
     ];
     days.push({
       dayName: "Tuesday",
@@ -203,7 +218,7 @@ export function generateWorkoutPlan(
     // Thu: Chest 4 + Triceps 4 = 8
     const thuExercises = [
       ...findExercises(["chest"], 4, new Set(), params),
-      ...findExercises(["tricep", "arm"], 4, new Set(), params),
+      ...findExercises(["tricep"], 4, new Set(), params),
     ];
     days.push({
       dayName: "Thursday",
@@ -217,7 +232,7 @@ export function generateWorkoutPlan(
     // Fri: Back 4 + Biceps 4 = 8
     const friExercises = [
       ...findExercises(["back", "lats"], 4, new Set(), params),
-      ...findExercises(["bicep", "arm"], 4, new Set(), params),
+      ...findExercises(["bicep"], 4, new Set(), params),
     ];
     days.push({
       dayName: "Friday",
@@ -263,7 +278,7 @@ export function generateWorkoutPlan(
       muscleGroups: ["Chest", "Triceps"],
       exercises: [
         ...findExercises(["chest"], 4, usedMon, params),
-        ...findExercises(["tricep", "arm"], 4, usedMon, params),
+        ...findExercises(["tricep"], 4, usedMon, params),
       ],
       isRestDay: false,
     });
@@ -276,7 +291,7 @@ export function generateWorkoutPlan(
       muscleGroups: ["Back", "Biceps"],
       exercises: [
         ...findExercises(["back", "lats"], 4, usedTue, params),
-        ...findExercises(["bicep", "arm"], 4, usedTue, params),
+        ...findExercises(["bicep"], 4, usedTue, params),
       ],
       isRestDay: false,
     });
@@ -304,7 +319,7 @@ export function generateWorkoutPlan(
       exercises: [
         ...findExercises(["tricep"], 3, usedThu, params),
         ...findExercises(["bicep"], 3, usedThu, params),
-        ...findExercises(["arm", "forearm", "wrist"], 3, usedThu, params),
+        ...findExercises(["forearm", "wrist"], 3, usedThu, params),
       ],
       isRestDay: false,
     });
@@ -316,10 +331,10 @@ export function generateWorkoutPlan(
       title: "Full Body Conditioning & Core",
       muscleGroups: ["Chest", "Back", "Core", "Full Body"],
       exercises: [
-        ...findExercises(["push", "chest"], 2, usedFri, params),
-        ...findExercises(["pull", "back"], 2, usedFri, params),
-        ...findExercises(["dip", "tricep", "arm"], 2, usedFri, params),
-        ...findExercises(["core", "ab", "plank"], 2, usedFri, params),
+        ...findExercises(["chest"], 2, usedFri, params),
+        ...findExercises(["back"], 2, usedFri, params),
+        ...findExercises(["tricep"], 2, usedFri, params),
+        ...findExercises(["ab", "core"], 2, usedFri, params),
       ],
       isRestDay: false,
     });
@@ -351,7 +366,7 @@ export function generateWorkoutPlan(
       muscleGroups: ["Chest", "Triceps"],
       exercises: [
         ...findExercises(["chest"], 4, usedMon, params),
-        ...findExercises(["tricep", "arm"], 4, usedMon, params),
+        ...findExercises(["tricep"], 4, usedMon, params),
       ],
       isRestDay: false,
     });
@@ -364,7 +379,7 @@ export function generateWorkoutPlan(
       muscleGroups: ["Back", "Biceps"],
       exercises: [
         ...findExercises(["back", "lats"], 4, usedTue, params),
-        ...findExercises(["bicep", "arm"], 4, usedTue, params),
+        ...findExercises(["bicep"], 4, usedTue, params),
       ],
       isRestDay: false,
     });
@@ -434,7 +449,7 @@ export function generateWorkoutPlan(
       muscleGroups: ["Chest", "Triceps"],
       exercises: [
         ...findExercises(["chest"], 4, usedMon, params),
-        ...findExercises(["tricep", "arm"], 4, usedMon, params),
+        ...findExercises(["tricep"], 4, usedMon, params),
       ],
       isRestDay: false,
     });
@@ -456,7 +471,7 @@ export function generateWorkoutPlan(
       muscleGroups: ["Back", "Biceps"],
       exercises: [
         ...findExercises(["back", "lats"], 4, usedWed, params),
-        ...findExercises(["bicep", "arm"], 4, usedWed, params),
+        ...findExercises(["bicep"], 4, usedWed, params),
       ],
       isRestDay: false,
     });
@@ -511,4 +526,3 @@ export function generateWorkoutPlan(
     generatedAt: new Date().toISOString(),
   };
 }
-

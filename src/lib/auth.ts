@@ -12,7 +12,14 @@ export interface AuthUser {
   avatar?: string;
 }
 
-export async function getAuthUser(req: Request): Promise<AuthUser | null> {
+export interface AuthResult {
+  user: AuthUser | null;
+  token: string | null;
+  isExpired: boolean;
+  errorReason?: string;
+}
+
+export async function getAuthResult(req: Request): Promise<AuthResult> {
   try {
     const cookieHeader = req.headers.get("cookie") || "";
     let token = "";
@@ -33,10 +40,25 @@ export async function getAuthUser(req: Request): Promise<AuthUser | null> {
     }
 
     if (!token) {
-      return null;
+      const customHeader = req.headers.get("x-apex-token") || "";
+      if (customHeader) {
+        token = customHeader;
+      }
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string; role: string };
+    if (!token) {
+      return { user: null, token: null, isExpired: false, errorReason: "NO_TOKEN" };
+    }
+
+    let decoded: { userId: string; email: string; role: string };
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string; role: string };
+    } catch (err: any) {
+      if (err?.name === "TokenExpiredError") {
+        return { user: null, token, isExpired: true, errorReason: "TOKEN_EXPIRED" };
+      }
+      return { user: null, token, isExpired: false, errorReason: "INVALID_TOKEN" };
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
@@ -51,18 +73,27 @@ export async function getAuthUser(req: Request): Promise<AuthUser | null> {
     });
 
     if (!user) {
-      return null;
+      return { user: null, token, isExpired: false, errorReason: "USER_NOT_FOUND" };
     }
 
     return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      phone: user.phone || undefined,
-      role: user.role,
-      avatar: user.avatar || undefined,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone || undefined,
+        role: user.role,
+        avatar: user.avatar || undefined,
+      },
+      token,
+      isExpired: false,
     };
   } catch (error) {
-    return null;
+    return { user: null, token: null, isExpired: false, errorReason: "UNKNOWN_ERROR" };
   }
+}
+
+export async function getAuthUser(req: Request): Promise<AuthUser | null> {
+  const result = await getAuthResult(req);
+  return result.user;
 }

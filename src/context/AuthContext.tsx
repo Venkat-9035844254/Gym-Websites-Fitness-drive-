@@ -10,6 +10,7 @@ import {
   saveUsers,
   saveMembers,
 } from "@/lib/storage";
+import { apiFetch, setStoredToken, clearStoredToken } from "@/lib/apiClient";
 
 interface AuthContextType {
   user: User | null;
@@ -45,8 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkSession = async () => {
     try {
-      // 1. Fetch active session from persistent server endpoint
-      const res = await fetch("/api/auth/me");
+      // 1. Fetch active session from persistent server endpoint using apiFetch with auth headers & cookies
+      const res = await apiFetch("/api/auth/me");
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.user) {
@@ -59,12 +60,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
       } else if (res.status === 401) {
-        // Explicitly unauthenticated / logged out from server session
-        setUser(null);
-        setMemberProfile(null);
-        setTrainerProfile(null);
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("apex_active_user");
+        // If server returns 401 explicitly, check if a stored user exists locally before clearing
+        const storedUserJson = typeof window !== "undefined" ? localStorage.getItem("apex_active_user") : null;
+        if (!storedUserJson) {
+          setUser(null);
+          setMemberProfile(null);
+          setTrainerProfile(null);
+          clearStoredToken();
         }
         await syncUsersListFromApi();
         setIsLoaded(true);
@@ -130,9 +132,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ): Promise<{ success: boolean; message?: string; user?: User }> => {
     try {
       console.log(`[AUTH] Initiating login for ${email}`);
-      const res = await fetch("/api/auth/login", {
+      const res = await apiFetch("/api/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
@@ -142,6 +143,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const authenticatedUser: User = data.user;
         setUser(authenticatedUser);
         localStorage.setItem("apex_active_user", JSON.stringify(authenticatedUser));
+        if (data.token) {
+          setStoredToken(data.token);
+        }
 
         if (data.memberProfile) setMemberProfile(data.memberProfile);
         if (data.trainerProfile) setTrainerProfile(data.trainerProfile);
@@ -206,15 +210,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async (): Promise<void> => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await apiFetch("/api/auth/logout", { method: "POST" });
     } catch (err) {
       console.error("[AUTH] Logout error:", err);
     } finally {
       setUser(null);
       setMemberProfile(null);
       setTrainerProfile(null);
+      clearStoredToken();
       if (typeof window !== "undefined") {
-        localStorage.removeItem("apex_active_user");
         window.location.href = "/login";
       }
     }
@@ -229,9 +233,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ): Promise<{ success: boolean; message?: string; user?: User; memberProfile?: MemberProfile }> => {
     try {
       console.log(`[AUTH] Initiating registration for ${email}`);
-      const res = await fetch("/api/auth/register", {
+      const res = await apiFetch("/api/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, phone, password, ...extraData }),
       });
 
@@ -250,6 +253,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(newUser);
       if (newMemberProfile) setMemberProfile(newMemberProfile);
       localStorage.setItem("apex_active_user", JSON.stringify(newUser));
+      if (data.token) {
+        setStoredToken(data.token);
+      }
 
       // Sync into local storage list so UI components receive updated users
       const users = getStoredUsers();
@@ -294,10 +300,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Persist to backend database asynchronously
-    fetch("/api/members/profile", {
+    // Persist to backend database asynchronously using apiFetch with auth headers
+    apiFetch("/api/members/profile", {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatedData),
     }).catch((err) => console.error("[AUTH] Async profile update sync error:", err));
   };

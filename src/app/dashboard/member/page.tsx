@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { apiFetch } from "@/lib/apiClient";
 import {
   getStoredWorkouts,
   getStoredAttendance,
@@ -117,7 +118,7 @@ export default function MemberDashboard() {
 
   const fetchVerificationRequests = async () => {
     try {
-      const res = await fetch("/api/memberships/verify-request");
+      const res = await apiFetch("/api/memberships/verify-request");
       const data = await res.json();
       if (res.ok && data.success) {
         setVerificationRequests(data.requests || []);
@@ -136,7 +137,7 @@ export default function MemberDashboard() {
     setIsLoadingPass(true);
     try {
       const passIdToFetch = latestRequest?.id || memberProfile?.id || user?.id;
-      const res = await fetch(`/api/memberships/pass/${encodeURIComponent(passIdToFetch)}`);
+      const res = await apiFetch(`/api/memberships/pass/${encodeURIComponent(passIdToFetch)}`);
       const data = await res.json();
       if (res.ok && data.success) {
         setActivePassData(data.pass);
@@ -158,7 +159,7 @@ export default function MemberDashboard() {
   const fetchPaymentHistory = async () => {
     setIsLoadingPayments(true);
     try {
-      const res = await fetch("/api/payments/history");
+      const res = await apiFetch("/api/payments/history");
       const data = await res.json();
       if (res.ok && data.success) {
         setPaymentHistory(data.orders || []);
@@ -310,9 +311,8 @@ export default function MemberDashboard() {
 
     // Sync backend progress API
     try {
-      await fetch("/api/plans/workout/progress", {
+      await apiFetch("/api/plans/workout/progress", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
           dayNumber: dayNum,
@@ -344,9 +344,8 @@ export default function MemberDashboard() {
     showToast(isNowDone ? "Day Completed!" : "Day Unmarked", `${targetDay.dayName} marked as ${isNowDone ? "complete" : "incomplete"}.`, "success");
 
     try {
-      await fetch("/api/plans/workout/progress", {
+      await apiFetch("/api/plans/workout/progress", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
           dayNumber: dayNum,
@@ -365,9 +364,8 @@ export default function MemberDashboard() {
 
     setIsRegenerating(true);
     try {
-      const res = await fetch("/api/plans/regenerate", {
+      const res = await apiFetch("/api/plans/regenerate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
           workoutDays: regenDays,

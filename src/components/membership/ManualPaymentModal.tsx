@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import { ShieldCheck, CreditCard, Lock, Loader2, X, QrCode, Smartphone, Building2, CheckCircle2, AlertCircle, FileText } from "lucide-react";
+import { apiFetch } from "@/lib/apiClient";
 
 export function ManualPaymentModal({
   plan,
@@ -23,8 +24,8 @@ export function ManualPaymentModal({
   const { user } = useAuth();
   const { showToast } = useNotification();
 
-  const [selectedCycle, setSelectedCycle] = useState<"MONTHLY" | "SIX_MONTHS" | "YEARLY">(billingCycle);
   const [selectedPlanId, setSelectedPlanId] = useState<string>(plan?.id || "plan-strength");
+  const [selectedCycle, setSelectedCycle] = useState<"MONTHLY" | "SIX_MONTHS" | "YEARLY">(billingCycle);
 
   const [paymentMethod, setPaymentMethod] = useState<"UPI" | "BANK_TRANSFER" | "CASH" | "CARD">("UPI");
   const [transactionRef, setTransactionRef] = useState<string>("");
@@ -84,9 +85,8 @@ export function ManualPaymentModal({
     setErrorMsg(null);
 
     try {
-      const res = await fetch("/api/memberships/verify-request", {
+      const res = await apiFetch("/api/memberships/verify-request", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           planId: selectedPlanId,
           billingCycle: selectedCycle,

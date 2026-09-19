@@ -5,6 +5,7 @@ import { Dumbbell, Scale, Target, Activity, HeartPulse, Flame, Droplets, CheckCi
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import { getStoredMeasurements, saveMeasurements } from "@/lib/storage";
+import { apiFetch } from "@/lib/apiClient";
 
 interface FitnessOnboardingModalProps {
   onClose: () => void;
@@ -158,9 +159,8 @@ export function FitnessOnboardingModal({ onClose }: FitnessOnboardingModalProps)
     // 7. Trigger dynamic plan generation on server
     try {
       if (user?.id) {
-        await fetch("/api/plans/regenerate", {
+        await apiFetch("/api/plans/regenerate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: user.id,
             age: ageNum,
