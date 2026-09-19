@@ -31,6 +31,10 @@ jobs:
         run: npx prisma generate
 
       - name: Build Next.js Web App
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres' }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci_build_jwt_secret_32_chars_long_key_sample' }}
+          NEXT_PUBLIC_APP_URL: "https://fitnessdrive.vercel.app"
         run: npm run build
 
       - name: Sync Capacitor Android
