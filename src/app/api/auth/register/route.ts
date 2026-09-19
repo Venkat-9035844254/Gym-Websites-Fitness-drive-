@@ -181,8 +181,15 @@ export async function POST(req: Request) {
     return response;
   } catch (error: any) {
     console.error("[AUTH] Registration error:", error);
+    const rawMsg = String(error?.message || "");
+    const isDbConnError = rawMsg.includes("prisma") || rawMsg.includes("Can't reach") || rawMsg.includes("database server") || rawMsg.includes("P1001") || rawMsg.includes("ENOTFOUND");
+    
+    const userFacingMessage = isDbConnError
+      ? "Unable to connect to the database server. Please verify your internet connection or database configuration."
+      : error?.message || "Internal server error during registration.";
+
     return NextResponse.json(
-      { success: false, message: error?.message || "Internal server error during registration." },
+      { success: false, message: userFacingMessage },
       { status: 500 }
     );
   }
